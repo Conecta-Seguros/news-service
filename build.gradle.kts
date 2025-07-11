@@ -31,8 +31,9 @@ dependencies {
 	// Spring Boot dependencies
 	implementation("org.springframework.boot:spring-boot-starter")
 	implementation("org.springframework.boot:spring-boot-configuration-processor")
+	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
 
-	// Cache
+	// Redis Cache
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
 	// Annotations and utilities
