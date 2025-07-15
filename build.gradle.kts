@@ -27,6 +27,7 @@ dependencyManagement {
 	dependencies {
 		dependency("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
 		dependency("io.github.cdimascio:dotenv-java:3.2.0")
+		dependency("org.projectlombok:lombok:1.18.38")
 	}
 }
 
@@ -57,6 +58,10 @@ dependencies {
 
 	// Development Dependencies
 	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
+
+	// Lombok for compile-time annotation processing
+	compileOnly("org.projectlombok:lombok")
+	annotationProcessor("org.projectlombok:lombok")
 
 	// Testing dependencies
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
