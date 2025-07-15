@@ -37,7 +37,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
-	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
 	// Redis Cache
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -53,6 +54,9 @@ dependencies {
 
 	// Database
 	runtimeOnly("org.postgresql:postgresql")
+
+	// Development Dependencies
+	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
 
 	// Testing dependencies
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
