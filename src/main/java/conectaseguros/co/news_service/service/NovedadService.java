@@ -16,34 +16,35 @@ public class NovedadService {
     public NovedadDTO crear(NovedadDTO dto) {
         Novedad novedad = Novedad.builder()
                 .clienteId(dto.getClienteId())
-                .aseguradoraId(dto.getAseguradoraId())
-                .seccionalId(dto.getSeccionalId())
-                .descripcion(dto.getDescripcion())
-                .cuota(dto.getCuota())
+                .cedulaCliente(dto.getCedulaCliente())
+                .numeroPoliza(dto.getNumeroPoliza())
+                .tipoNovedad(dto.getTipoNovedad())
                 .valor(dto.getValor())
-                .nomina(dto.getNomina())
-                .fecha(dto.getFecha())
-                .periodo(dto.getPeriodo())
-                .estado(dto.getEstado() != null ? dto.getEstado() : "PENDIENTE")
-                .archivoId(dto.getArchivoId())
+                .porcentaje(dto.getPorcentaje())
+                .descripcion(dto.getDescripcion())
+                .fechaAplicacion(dto.getFechaAplicacion())
+                .fechaVencimiento(dto.getFechaVencimiento())
+                .estado(dto.getEstado() != null ? dto.getEstado() : "ACTIVO")
+                .archivoOrigen(dto.getArchivoOrigen())
+                .numeroLinea(dto.getNumeroLinea())
+                .usuarioCreacion(dto.getUsuarioCreacion())
                 .build();
+
         return toDTO(novedadRepository.save(novedad));
     }
 
     public NovedadDTO actualizar(Long id, NovedadDTO dto) {
         Novedad novedad = novedadRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Novedad no encontrada"));
-        novedad.setClienteId(dto.getClienteId());
-        novedad.setAseguradoraId(dto.getAseguradoraId());
-        novedad.setSeccionalId(dto.getSeccionalId());
-        novedad.setDescripcion(dto.getDescripcion());
-        novedad.setCuota(dto.getCuota());
+
+        novedad.setTipoNovedad(dto.getTipoNovedad());
         novedad.setValor(dto.getValor());
-        novedad.setNomina(dto.getNomina());
-        novedad.setFecha(dto.getFecha());
-        novedad.setPeriodo(dto.getPeriodo());
+        novedad.setPorcentaje(dto.getPorcentaje());
+        novedad.setDescripcion(dto.getDescripcion());
+        novedad.setFechaAplicacion(dto.getFechaAplicacion());
+        novedad.setFechaVencimiento(dto.getFechaVencimiento());
         novedad.setEstado(dto.getEstado());
-        novedad.setArchivoId(dto.getArchivoId());
+
         return toDTO(novedadRepository.save(novedad));
     }
 
@@ -60,21 +61,37 @@ public class NovedadService {
         return novedadRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    public List<NovedadDTO> listarPorCliente(String cedulaCliente) {
+        return novedadRepository.findByCedulaCliente(cedulaCliente)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<NovedadDTO> listarPorPoliza(String numeroPoliza) {
+        return novedadRepository.findByNumeroPoliza(numeroPoliza)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
     private NovedadDTO toDTO(Novedad n) {
         return NovedadDTO.builder()
                 .id(n.getId())
                 .clienteId(n.getClienteId())
-                .aseguradoraId(n.getAseguradoraId())
-                .seccionalId(n.getSeccionalId())
-                .descripcion(n.getDescripcion())
-                .cuota(n.getCuota())
+                .cedulaCliente(n.getCedulaCliente())
+                .numeroPoliza(n.getNumeroPoliza())
+                .tipoNovedad(n.getTipoNovedad())
                 .valor(n.getValor())
-                .nomina(n.getNomina())
-                .fecha(n.getFecha())
-                .periodo(n.getPeriodo())
+                .porcentaje(n.getPorcentaje())
+                .descripcion(n.getDescripcion())
+                .fechaAplicacion(n.getFechaAplicacion())
+                .fechaVencimiento(n.getFechaVencimiento())
                 .estado(n.getEstado())
-                .archivoId(n.getArchivoId())
+                .archivoOrigen(n.getArchivoOrigen())
+                .numeroLinea(n.getNumeroLinea())
                 .fechaCreacion(n.getFechaCreacion())
+                .usuarioCreacion(n.getUsuarioCreacion())
                 .build();
     }
 }
