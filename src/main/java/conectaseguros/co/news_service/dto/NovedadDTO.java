@@ -12,16 +12,20 @@ import java.time.LocalDateTime;
 public class NovedadDTO {
     private Long id;
     private Long clienteId;
-    private Long aseguradoraId;
-    private Long seccionalId;
-    private String descripcion;
-    private BigDecimal cuota;
+    private String cedulaCliente;
+    private String nombreCliente;
+    private String numeroPoliza;
+    private String productoNombre;
+    private String tipoNovedad;
     private BigDecimal valor;
-    private String nomina;
-    private LocalDate fecha;
-    private String periodo;
+    private BigDecimal porcentaje;
+    private String descripcion;
+    private LocalDate fechaAplicacion;
+    private LocalDate fechaVencimiento;
     private String estado;
-    private Long archivoId;
+    private String archivoOrigen;
+    private Integer numeroLinea;
     private LocalDateTime fechaCreacion;
+    private String usuarioCreacion;
 }
 
