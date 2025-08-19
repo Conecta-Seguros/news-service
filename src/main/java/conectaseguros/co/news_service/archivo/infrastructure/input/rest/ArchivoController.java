@@ -65,7 +65,7 @@ public class ArchivoController {
                     "nombreArchivo", archivo.getOriginalFilename(),
                     "periodo", request.getPeriodo(),
                     "tipoArchivo", request.getTipoArchivo(),
-                    "estado", "PROCESANDO"
+                    "estado", "CARGADO"
             );
 
             return ResponseEntity.status(HttpStatus.CREATED)

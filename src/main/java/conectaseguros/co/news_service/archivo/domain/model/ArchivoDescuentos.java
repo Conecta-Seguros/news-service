@@ -2,7 +2,11 @@ package conectaseguros.co.news_service.archivo.domain.model;
 
 import conectaseguros.co.news_service.archivo.domain.model.enums.EstadoArchivo;
 import conectaseguros.co.news_service.archivo.domain.model.valueobjects.MetadatosArchivo;
+import lombok.Setter;
 
+import java.time.LocalDateTime;
+
+@Setter
 public class ArchivoDescuentos {
     private final String nombreArchivo;
     private final String periodo;
@@ -17,6 +21,7 @@ public class ArchivoDescuentos {
     private Integer excedentes;
     private Integer faltantes;
     private Integer noLlegaron;
+    private LocalDateTime fechaCarga;
     private EstadoArchivo estado;
 
     public ArchivoDescuentos(String nombreArchivo, String periodo, Integer seccionalId,
@@ -30,9 +35,10 @@ public class ArchivoDescuentos {
         this.excedentes = 0;
         this.faltantes = 0;
         this.noLlegaron = 0;
-        this.estado = EstadoArchivo.PROCESANDO;
+        this.estado = EstadoArchivo.CARGADO;
         this.rutaArchivo = rutaArchivo;
         this.contenido = contenido;
+        this.fechaCarga = LocalDateTime.now();
         this.metadatos = metadatos;
     }
 
@@ -71,4 +77,6 @@ public class ArchivoDescuentos {
     public String getRutaArchivo() { return rutaArchivo; }
     public byte[] getContenido() { return contenido; }
     public MetadatosArchivo getMetadatos() { return metadatos; }
+    public LocalDateTime getFechaCarga() { return fechaCarga; }
+    public void setFechaCarga(LocalDateTime fechaCarga) { this.fechaCarga = fechaCarga; }
 }

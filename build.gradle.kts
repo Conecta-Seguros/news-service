@@ -32,6 +32,7 @@ dependencyManagement {
         dependency("org.apache.poi:poi-ooxml:5.4.1")
         dependency("com.opencsv:opencsv:5.12.0")
         dependency("org.apache.poi:poi-scratchpad:5.4.1")
+        dependency("io.projectreactor.netty:reactor-netty-http:1.3.0-M6")
 	}
 }
 
@@ -44,6 +45,7 @@ dependencies {
 	implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
 
 	// Redis Cache
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -65,7 +67,10 @@ dependencies {
     // OpenCSV for CSV file handling
     implementation("com.opencsv:opencsv")
 
-	// Database
+    // Reactor Netty for reactive HTTP support
+    implementation("io.projectreactor.netty:reactor-netty-http")
+
+    // Database
 	runtimeOnly("org.postgresql:postgresql")
 
 	// Development Dependencies
@@ -77,6 +82,7 @@ dependencies {
 
 	// Testing dependencies
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("io.projectreactor:reactor-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

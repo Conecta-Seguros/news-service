@@ -41,7 +41,7 @@ public class ArchivoDescuentosEntity {
     private Integer noLlegaron = 0;
 
     @Column(name = "estado", nullable = false, length = 20)
-    private String estado = "PROCESANDO";
+    private String estado = "CARGADO";
 
     @Column(name = "ruta_archivo", length = 500)
     private String rutaArchivo;
