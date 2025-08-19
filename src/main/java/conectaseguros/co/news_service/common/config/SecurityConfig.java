@@ -1,4 +1,4 @@
-package conectaseguros.co.news_service.config;
+package conectaseguros.co.news_service.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

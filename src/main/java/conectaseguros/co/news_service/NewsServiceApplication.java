@@ -1,13 +1,16 @@
 package conectaseguros.co.news_service;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import java.util.Objects;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-
-import java.util.Objects;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @SpringBootApplication
+@EnableTransactionManagement
+@EnableConfigurationProperties
 @EnableJpaRepositories
 public class NewsServiceApplication {
 
