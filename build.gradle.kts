@@ -28,6 +28,10 @@ dependencyManagement {
 		dependency("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
 		dependency("io.github.cdimascio:dotenv-java:3.2.0")
 		dependency("org.projectlombok:lombok:1.18.38")
+        dependency("org.apache.poi:poi:5.4.1")
+        dependency("org.apache.poi:poi-ooxml:5.4.1")
+        dependency("com.opencsv:opencsv:5.12.0")
+        dependency("org.apache.poi:poi-scratchpad:5.4.1")
 	}
 }
 
@@ -52,6 +56,14 @@ dependencies {
 
 	// Dotenv support
 	implementation("io.github.cdimascio:dotenv-java")
+
+    // Apache POI for Excel file handling
+    implementation("org.apache.poi:poi")
+    implementation("org.apache.poi:poi-ooxml")
+    implementation("org.apache.poi:poi-scratchpad")
+
+    // OpenCSV for CSV file handling
+    implementation("com.opencsv:opencsv")
 
 	// Database
 	runtimeOnly("org.postgresql:postgresql")
