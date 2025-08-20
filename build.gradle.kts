@@ -33,6 +33,7 @@ dependencyManagement {
         dependency("com.opencsv:opencsv:5.12.0")
         dependency("org.apache.poi:poi-scratchpad:5.4.1")
         dependency("io.projectreactor.netty:reactor-netty-http:1.3.0-M6")
+        dependency("org.apache.httpcomponents.client5:httpclient5:5.5")
 	}
 }
 
@@ -69,6 +70,9 @@ dependencies {
 
     // Reactor Netty for reactive HTTP support
     implementation("io.projectreactor.netty:reactor-netty-http")
+
+    // Apache HttpClient for HTTP requests
+    implementation("org.apache.httpcomponents.client5:httpclient5")
 
     // Database
 	runtimeOnly("org.postgresql:postgresql")

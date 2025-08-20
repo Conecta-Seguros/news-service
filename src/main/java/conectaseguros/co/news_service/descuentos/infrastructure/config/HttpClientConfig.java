@@ -1,28 +1,58 @@
 package conectaseguros.co.news_service.descuentos.infrastructure.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.core5.util.Timeout;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
-
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class HttpClientConfig {
 
-    @Value("${app.services.timeout.connection:5}")
-    private int connectionTimeoutSeconds;
+    /**
+     * RestTemplate básico SIN interceptors para evitar dependencia circular
+     */
+    @Bean("basicRestTemplate")
+    public RestTemplate basicRestTemplate() {
+        return createRestTemplate();
+    }
 
-    @Value("${app.services.timeout.read:10}")
-    private int readTimeoutSeconds;
-
+    /**
+     * RestTemplate principal CON interceptors para autenticación automática
+     */
     @Bean
+    @Primary
     public RestTemplate restTemplate() {
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(connectionTimeoutSeconds));
-        factory.setConnectionRequestTimeout(Duration.ofSeconds(readTimeoutSeconds));
+        return createRestTemplate();
+    }
+
+    private RestTemplate createRestTemplate() {
+        // ✅ NUEVO: Configurar HttpClient para seguir redirects
+        HttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder
+                .create()
+                .setMaxConnTotal(20)
+                .setMaxConnPerRoute(10)
+                .build();
+
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(
+                        org.apache.hc.client5.http.config.RequestConfig.custom()
+                                .setConnectTimeout(Timeout.ofSeconds(5))
+                                .setResponseTimeout(Timeout.ofSeconds(10))
+                                .setRedirectsEnabled(true)          // ✅ HABILITAR REDIRECTS
+                                .setMaxRedirects(3)                 // ✅ MÁXIMO 3 redirects
+                                .setCircularRedirectsAllowed(false) // ✅ NO permitir redirects circulares
+                                .build()
+                )
+                .build();
+
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
 
         return new RestTemplate(factory);
     }
