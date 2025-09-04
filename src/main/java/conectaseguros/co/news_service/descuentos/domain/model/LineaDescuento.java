@@ -20,6 +20,7 @@ public class LineaDescuento {
     private final BigDecimal valor;
     private final String nomina;
     private final int numeroLinea;
+    private Integer clienteId;
 
     public LineaDescuento(String[] campos, int numeroLinea) {
         if (campos == null || campos.length < 12) {
@@ -81,7 +82,9 @@ public class LineaDescuento {
         }
 
         try {
-            BigDecimal valorDecimal = new BigDecimal(valor.trim());
+            // Eliminar puntos de miles y convertir comas decimales a punto
+            String valorLimpio = valor.replace(".", "").replace(",", ".");
+            BigDecimal valorDecimal = new BigDecimal(valorLimpio);
 
             if (valorDecimal.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new LineaDescuentoInvalidaException(
@@ -130,6 +133,12 @@ public class LineaDescuento {
     public BigDecimal getValor() { return valor; }
     public String getNomina() { return nomina; }
     public int getNumeroLinea() { return numeroLinea; }
+    public Integer getClienteId() {
+        return clienteId;
+    }
+    public void setClienteId(Integer clienteId) {
+        this.clienteId = clienteId;
+    }
 
     @Override
     public boolean equals(Object o) {

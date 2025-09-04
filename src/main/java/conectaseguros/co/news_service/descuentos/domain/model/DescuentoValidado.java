@@ -7,7 +7,6 @@ import java.util.Objects;
 
 public class DescuentoValidado {
 
-    private Long id;
     private final Integer clienteId;
     private final Integer seccionalId;
     private final Integer aseguradoraId;
@@ -19,9 +18,10 @@ public class DescuentoValidado {
     private final BigDecimal valor;
     private final BigDecimal valorEsperado;
     private final BigDecimal diferencia;
-    private final String estado;
     private final Long archivoId;
     private final LocalDateTime fechaCreacion;
+    private Long id;
+    private String estado;
 
     public DescuentoValidado(Integer clienteId, Integer seccionalId, Integer aseguradoraId,
                              String cedulaCliente, String periodo, LocalDate fecha,
@@ -45,7 +45,7 @@ public class DescuentoValidado {
 
     public static DescuentoValidado fromLineaDescuento(LineaDescuento linea, Integer clienteId,
                                                        Integer seccionalId, String periodo,
-                                                       Long archivoId) {
+                                                       Long archivoId, BigDecimal valorEsperado) {
         // Extraer aseguradora del NIT (simplificado)
         Integer aseguradoraId = extraerAseguradoraId(linea.getNit());
 
@@ -59,7 +59,7 @@ public class DescuentoValidado {
                 linea.getCodigoConcepto(),
                 null, // Se asignaría después del procesamiento
                 linea.getValor(),
-                null, // Se calcularía en conciliación
+                valorEsperado, // Se pasa el valor esperado calculado
                 archivoId
         );
     }
@@ -97,7 +97,23 @@ public class DescuentoValidado {
     public BigDecimal getValorEsperado() { return valorEsperado; }
     public BigDecimal getDiferencia() { return diferencia; }
     public String getEstado() { return estado; }
+
+    public void setEstado(String estado) {
+        // Setter para permitir modificar el estado desde el servicio
+        // (en vez de solo en el constructor)
+        // Si se requiere validación, agregar aquí
+        // Ejemplo: VALIDADO, FALTANTE, EXCEDENTE
+        try {
+            java.lang.reflect.Field field = this.getClass().getDeclaredField("estado");
+            field.setAccessible(true);
+            field.set(this, estado);
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo asignar el estado", e);
+        }
+    }
+
     public Long getArchivoId() { return archivoId; }
+
     public LocalDateTime getFechaCreacion() { return fechaCreacion; }
 
     @Override

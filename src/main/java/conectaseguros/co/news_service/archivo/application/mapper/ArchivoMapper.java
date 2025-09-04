@@ -37,7 +37,7 @@ public class ArchivoMapper {
                 .seccionalId(archivo.getSeccionalId())
                 .totalRegistros(archivo.getTotalRegistros())
                 .registrosExitosos(archivo.getRegistrosProcesados())
-                .registrosErrores(0) // Los descuentos no manejan errores de la misma forma
+                .registrosErrores(0)
                 .excedentes(archivo.getExcedentes())
                 .faltantes(archivo.getFaltantes())
                 .noLlegaron(archivo.getNoLlegaron())

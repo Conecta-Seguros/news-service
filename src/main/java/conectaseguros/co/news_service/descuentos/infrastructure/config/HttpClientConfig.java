@@ -45,9 +45,9 @@ public class HttpClientConfig {
                         org.apache.hc.client5.http.config.RequestConfig.custom()
                                 .setConnectTimeout(Timeout.ofSeconds(5))
                                 .setResponseTimeout(Timeout.ofSeconds(10))
-                                .setRedirectsEnabled(true)          // ✅ HABILITAR REDIRECTS
-                                .setMaxRedirects(3)                 // ✅ MÁXIMO 3 redirects
-                                .setCircularRedirectsAllowed(false) // ✅ NO permitir redirects circulares
+                                .setRedirectsEnabled(true)
+                                .setMaxRedirects(3)
+                                .setCircularRedirectsAllowed(false)
                                 .build()
                 )
                 .build();

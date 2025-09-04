@@ -52,6 +52,9 @@ public class ValidadorCliente implements ValidadorLinea {
         ClienteService.ClienteInfo clienteInfo = validacionSeccional.getDatosAdicionales(
                 ClienteService.ClienteInfo.class
         );
+        if (clienteInfo != null) {
+            linea.setClienteId(clienteInfo.getId());
+        }
 
         logger.debug("Cliente {} validado correctamente", linea.getCodigoEmpleado());
 

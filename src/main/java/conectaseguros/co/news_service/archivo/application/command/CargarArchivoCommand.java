@@ -1,9 +1,12 @@
 package conectaseguros.co.news_service.archivo.application.command;
 
 import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
+import lombok.Getter;
 import org.springframework.web.multipart.MultipartFile;
 
+@Getter
 public class CargarArchivoCommand {
+
     private final MultipartFile archivo;
     private final TipoArchivo tipoArchivo;
     private final String periodo;
@@ -19,10 +22,4 @@ public class CargarArchivoCommand {
         this.usuarioId = usuarioId;
     }
 
-    // Getters
-    public MultipartFile getArchivo() { return archivo; }
-    public TipoArchivo getTipoArchivo() { return tipoArchivo; }
-    public String getPeriodo() { return periodo; }
-    public Integer getSeccionalId() { return seccionalId; }
-    public Integer getUserId() { return usuarioId; }
 }

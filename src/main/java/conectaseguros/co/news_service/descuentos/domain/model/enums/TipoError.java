@@ -21,6 +21,8 @@ public enum TipoError {
     DUPLICADO_PERIODO("Descuento duplicado en el período", false),
     VALOR_NEGATIVO_O_CERO("Valor debe ser positivo", false),
 
+    ERROR_DESCUENTO_EXCEDE_MAXIMO("Valor de descuento excede el máximo permitido", false),
+
     // Errores de conectividad (no críticos - pueden ser reintentados)
     ERROR_COMUNICACION_CLIENTES("Error al consultar servicio de clientes", false),
     ERROR_COMUNICACION_PRODUCTOS("Error al consultar servicio de productos", false),

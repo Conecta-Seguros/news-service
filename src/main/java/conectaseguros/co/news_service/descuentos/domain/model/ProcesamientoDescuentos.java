@@ -1,19 +1,21 @@
 package conectaseguros.co.news_service.descuentos.domain.model;
 
 import conectaseguros.co.news_service.archivo.domain.model.enums.EstadoArchivo;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+@Getter
 public class ProcesamientoDescuentos {
 
     private final Long archivoId;
     private final String periodo;
     private final Integer seccionalId;
     private final LocalDateTime fechaInicio;
-
+    private final List<ErrorProcesamiento> erroresEncontrados;
     private EstadoArchivo estado;
     private LocalDateTime fechaFin;
     private int totalLineas;
@@ -24,7 +26,6 @@ public class ProcesamientoDescuentos {
     private int faltantes;
     private int noLlegaron;
     private String mensajeEstado;
-    private final List<ErrorProcesamiento> erroresEncontrados;
 
     public ProcesamientoDescuentos(Long archivoId, String periodo, Integer seccionalId) {
         this.archivoId = Objects.requireNonNull(archivoId, "ArchivoId no puede ser null");
@@ -90,27 +91,26 @@ public class ProcesamientoDescuentos {
         );
     }
 
-    // Getters
-    public Long getArchivoId() { return archivoId; }
-    public String getPeriodo() { return periodo; }
-    public Integer getSeccionalId() { return seccionalId; }
     public LocalDateTime getFechaInicio() { return fechaInicio; }
-    public EstadoArchivo getEstado() { return estado; }
+
     public LocalDateTime getFechaFin() { return fechaFin; }
-    public int getTotalLineas() { return totalLineas; }
-    public int getLineasProcesadas() { return lineasProcesadas; }
-    public int getLineasExitosas() { return lineasExitosas; }
-    public int getLineasConError() { return lineasConError; }
+
     public int getExcedentes() { return excedentes; }
-    public int getFaltantes() { return faltantes; }
-    public int getNoLlegaron() { return noLlegaron; }
-    public String getMensajeEstado() { return mensajeEstado; }
-    public List<ErrorProcesamiento> getErroresEncontrados() { return List.copyOf(erroresEncontrados); }
 
     // Setters para estadísticas
     public void setExcedentes(int excedentes) { this.excedentes = excedentes; }
+
+    public int getFaltantes() { return faltantes; }
+
     public void setFaltantes(int faltantes) { this.faltantes = faltantes; }
+
+    public int getNoLlegaron() { return noLlegaron; }
+
     public void setNoLlegaron(int noLlegaron) { this.noLlegaron = noLlegaron; }
+
+    public String getMensajeEstado() { return mensajeEstado; }
+
+    public List<ErrorProcesamiento> getErroresEncontrados() { return List.copyOf(erroresEncontrados); }
 
     @Override
     public String toString() {

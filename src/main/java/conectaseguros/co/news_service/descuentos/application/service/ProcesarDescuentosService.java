@@ -11,6 +11,7 @@ import conectaseguros.co.news_service.descuentos.domain.port.input.ValidadorLine
 import conectaseguros.co.news_service.descuentos.domain.port.output.ClienteService;
 import conectaseguros.co.news_service.descuentos.domain.port.output.DescuentoRepository;
 import conectaseguros.co.news_service.descuentos.domain.port.output.ErrorProcesamientoRepository;
+import conectaseguros.co.news_service.descuentos.infrastructure.output.product.ProductoInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,8 +39,8 @@ public class ProcesarDescuentosService {
     private final ValidadorCliente validadorCliente;
     private final ValidadorProductos validadorProductos;
 
-    @Value("${app.procesamiento.lote-tamaño:1000}")
-    private int tamañoLote;
+    @Value("${app.procesamiento.lote-tamano:1000}")
+    private int tamanoLote;
 
     @Value("${app.procesamiento.headers-esperados:TERCERO,NIT,CODCONCEPTO,CONCEPTO,CODEMPLEADO,Nombre1,Nombre2,Apellido1,Apellido2,COD_UNIDAD_EJECUTORA,VALOR,NOMINA}")
     private String headersEsperados;
@@ -178,9 +179,23 @@ public class ProcesarDescuentosService {
                             Integer clienteId = clienteInfo != null ? clienteInfo.getId() :
                                     obtenerClienteIdFallback(linea.getCodigoEmpleado());
 
+                            // Obtener productos activos y calcular valor esperado
+                            List<ProductoInfo> productosActivos = validadorProductos.obtenerProductosActivos(clienteId);
+                            java.math.BigDecimal valorEsperado = productosActivos.stream()
+                                    .map(p -> p.getValorCuotaMensual() != null ? p.getValorCuotaMensual() : java.math.BigDecimal.ZERO)
+                                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
                             DescuentoValidado descuento = DescuentoValidado.fromLineaDescuento(
-                                    linea, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId
+                                    linea, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId, valorEsperado
                             );
+                            // Calcular estado según diferencia
+                            if (descuento.getValor().compareTo(valorEsperado) < 0) {
+                                descuento.setEstado("FALTANTE");
+                            } else if (descuento.getValor().compareTo(valorEsperado) > 0) {
+                                descuento.setEstado("EXCEDENTE");
+                            } else {
+                                descuento.setEstado("CONCILIADO");
+                            }
                             descuentosLote.add(descuento);
                             procesamiento.registrarLineaProcesada(true);
                             logger.debug("Línea {} agregada como descuento válido", i + 1);
@@ -211,7 +226,7 @@ public class ProcesarDescuentosService {
                     }
 
                     // Guardar lote si alcanzó el tamaño configurado
-                    if (descuentosLote.size() >= tamañoLote || erroresLote.size() >= tamañoLote) {
+                    if (descuentosLote.size() >= tamanoLote || erroresLote.size() >= tamanoLote) {
                         logger.debug("Guardando lote: {} descuentos, {} errores", descuentosLote.size(), erroresLote.size());
                         guardarLotes(descuentosLote, erroresLote);
                         descuentosLote.clear();
@@ -514,3 +529,4 @@ public class ProcesarDescuentosService {
         }
     }
 }
+

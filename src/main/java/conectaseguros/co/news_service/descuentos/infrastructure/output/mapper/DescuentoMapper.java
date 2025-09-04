@@ -4,6 +4,7 @@ import conectaseguros.co.news_service.descuentos.domain.model.DescuentoValidado;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.entity.DescuentoEntity;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Component
@@ -58,6 +59,11 @@ public class DescuentoMapper {
         // Asignar campos calculados
         entity.setEstado(domain.getEstado());
         entity.setFechaCreacion(domain.getFechaCreacion());
+
+        // Calcular y asignar la diferencia
+        BigDecimal valor = domain.getValor() != null ? domain.getValor() : BigDecimal.ZERO;
+        BigDecimal valorEsperado = domain.getValorEsperado() != null ? domain.getValorEsperado() : BigDecimal.ZERO;
+        entity.setDiferencia(valor.subtract(valorEsperado));
 
         return entity;
     }
