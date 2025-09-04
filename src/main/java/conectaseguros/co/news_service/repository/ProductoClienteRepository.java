@@ -1,5 +1,6 @@
 package conectaseguros.co.news_service.repository;
 
+import conectaseguros.co.news_service.model.ProductoCliente;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
