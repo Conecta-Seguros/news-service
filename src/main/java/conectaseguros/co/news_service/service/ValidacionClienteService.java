@@ -1,10 +1,26 @@
 package conectaseguros.co.news_service.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 import java.util.Arrays;
 import java.util.List;
+
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class ValidacionClienteService {
+    
+    private final RestTemplate restTemplate;
+    
+    @Value("${productos.api.base-url}")
+    private String productosApiBaseUrl;
+    
     private final List<String> clientesValidos = Arrays.asList(
             "12345678", "87654321", "98765432", "11111111", "22222222"
     );
@@ -17,13 +33,43 @@ public class ValidacionClienteService {
         // Simulación: cliente existe si está en la lista o empieza por "1"
         return clientesValidos.contains(cedula) || cedula.startsWith("1");
     }
-/**
+    /**
      * Validar que el cliente tiene productos activos
-     * En producción: consultar base de datos o API de productos
+     * Consulta la API de productos usando el endpoint /api/v1/products/productos-cliente/{id}
      */
     public boolean clienteTieneProductosActivos(String cedula) {
-        // Simulación: clientes que empiezan por "1" o "2" tienen productos activos
-        return cedula.startsWith("1") || cedula.startsWith("2");
+        try {
+            // Obtener el ID del cliente basado en la cédula
+            Long clienteId = obtenerClienteId(cedula);
+            
+            // Construir la URL del endpoint de productos
+            String url = productosApiBaseUrl + "/api/v1/products/productos-cliente/" + clienteId;
+            
+            log.debug("Verificando productos activos para cliente ID: {} en URL: {}", clienteId, url);
+            
+            // Realizar petición HEAD al endpoint de productos
+            ResponseEntity<Void> response = restTemplate.exchange(
+                url,
+                org.springframework.http.HttpMethod.HEAD,
+                null,
+                Void.class
+            );
+            
+            // Si el status es 200, el cliente tiene productos activos
+            boolean tieneProductos = response.getStatusCode() == HttpStatus.OK;
+            log.debug("Cliente ID: {} {} productos activos", clienteId, tieneProductos ? "tiene" : "no tiene");
+            
+            return tieneProductos;
+            
+        } catch (RestClientException e) {
+            log.warn("Error al consultar productos para cliente con cédula {}: {}", cedula, e.getMessage());
+            // En caso de error, aplicar fallback con la lógica anterior
+            return cedula.startsWith("1") || cedula.startsWith("2");
+        } catch (Exception e) {
+            log.error("Error inesperado al validar productos del cliente {}: {}", cedula, e.getMessage());
+            // En caso de error, aplicar fallback con la lógica anterior
+            return cedula.startsWith("1") || cedula.startsWith("2");
+        }
     }
 
     /**
