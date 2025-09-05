@@ -7,8 +7,6 @@ import conectaseguros.co.news_service.archivo.domain.port.input.LeerArchivoUseCa
 import conectaseguros.co.news_service.archivo.infrastructure.input.dto.CargarArchivoRequestDTO;
 import conectaseguros.co.news_service.common.util.ApiResponse;
 import jakarta.validation.Valid;
-import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -18,9 +16,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/news/archivos")
-@CrossOrigin(origins = "*")
 public class ArchivoController {
 
     private static final Logger logger = LoggerFactory.getLogger(ArchivoController.class);
