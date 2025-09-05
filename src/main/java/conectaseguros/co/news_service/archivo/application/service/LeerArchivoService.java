@@ -8,6 +8,13 @@ import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.archivo.domain.port.input.LeerArchivoUseCase;
 import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoDescuentosRepository;
 import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoNovedadesRepository;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -15,12 +22,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 @Service
 public class LeerArchivoService implements LeerArchivoUseCase {
@@ -44,6 +45,28 @@ public class LeerArchivoService implements LeerArchivoUseCase {
         String nombreArchivo = obtenerNombreArchivo(archivoId, tipoArchivo);
 
         return leerArchivoDesdeBytes(contenido, nombreArchivo);
+    }
+
+    /**
+     * Convierte una lista de arrays de String (filas) en una lista de líneas CSV (String)
+     */
+    private List<String> convertirFilasACSV(List<String[]> filas) {
+        List<String> lineas = new ArrayList<>();
+        for (String[] fila : filas) {
+            lineas.add(String.join(",", fila));
+        }
+        return lineas;
+    }
+
+    /**
+     * Lee el archivo desde bytes y lo convierte en líneas de texto (CSV) para procesamiento
+     */
+    public List<String> leerArchivoComoLineas(Long archivoId, TipoArchivo tipoArchivo) {
+        logger.info("Iniciando lectura de archivo como líneas ID: {} de tipo: {}", archivoId, tipoArchivo);
+        byte[] contenido = obtenerContenidoArchivo(archivoId, tipoArchivo);
+        String nombreArchivo = obtenerNombreArchivo(archivoId, tipoArchivo);
+        List<String[]> filas = leerArchivoDesdeBytes(contenido, nombreArchivo);
+        return convertirFilasACSV(filas);
     }
 
     @Override
@@ -72,7 +95,7 @@ public class LeerArchivoService implements LeerArchivoUseCase {
         }
     }
 
-    private byte[] obtenerContenidoArchivo(Long archivoId, TipoArchivo tipoArchivo) {
+    public byte[] obtenerContenidoArchivo(Long archivoId, TipoArchivo tipoArchivo) {
         switch (tipoArchivo) {
             case NOVEDADES:
                 ArchivoNovedades archivoNovedades = archivoNovedadesRepository.buscarPorId(archivoId)
@@ -91,7 +114,7 @@ public class LeerArchivoService implements LeerArchivoUseCase {
         }
     }
 
-    private String obtenerNombreArchivo(Long archivoId, TipoArchivo tipoArchivo) {
+    public String obtenerNombreArchivo(Long archivoId, TipoArchivo tipoArchivo) {
         switch (tipoArchivo) {
             case NOVEDADES:
                 return archivoNovedadesRepository.buscarPorId(archivoId)
