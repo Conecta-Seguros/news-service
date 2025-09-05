@@ -21,8 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -41,9 +43,6 @@ public class ProcesarDescuentosService {
 
     @Value("${app.procesamiento.lote-tamano:1000}")
     private int tamanoLote;
-
-    @Value("${app.procesamiento.headers-esperados:TERCERO,NIT,CODCONCEPTO,CONCEPTO,CODEMPLEADO,Nombre1,Nombre2,Apellido1,Apellido2,COD_UNIDAD_EJECUTORA,VALOR,NOMINA}")
-    private String headersEsperados;
 
     public ProcesarDescuentosService(ArchivoDescuentosRepository archivoRepository,
                                      DescuentoRepository descuentoRepository,
@@ -90,6 +89,53 @@ public class ProcesarDescuentosService {
                 );
             }
         });
+    }
+
+    /**
+     * Valida la estructura básica del archivo
+     */
+    private ResultadoValidacion validarEstructuraArchivo(List<String> lineas, Long archivoId) {
+        logger.debug("Validando estructura del archivo {}", archivoId);
+
+        if (lineas.isEmpty()) {
+            return ResultadoValidacion.conError(
+                    TipoError.ARCHIVO_VACIO,
+                    "El archivo está vacío"
+            );
+        }
+
+        if (lineas.size() < 2) {
+            return ResultadoValidacion.conError(
+                    TipoError.ARCHIVO_VACIO,
+                    "El archivo debe contener al menos una línea de datos además del header"
+            );
+        }
+
+        // Validar headers
+        String header = lineas.get(0);
+        String[] headersArchivo = parsearLinea(header);
+        // Normalizar headers: eliminar espacios y convertir a mayúsculas
+        for (int h = 0; h < headersArchivo.length; h++) {
+            headersArchivo[h] = headersArchivo[h].replace("\"", "").trim().toUpperCase();
+        }
+        boolean tieneCodigoEmpleado = false;
+        boolean tieneValor = false;
+        for (String h : headersArchivo) {
+            if (h.equals("CODEMPLEADO")) {
+                tieneCodigoEmpleado = true;
+            }
+            if (h.equals("VALOR")) {
+                tieneValor = true;
+            }
+        }
+        if (!tieneCodigoEmpleado || !tieneValor) {
+            return ResultadoValidacion.conError(
+                    TipoError.HEADERS_INCORRECTOS,
+                    "El archivo debe contener los headers CODEMPLEADO y VALOR"
+            );
+        }
+        logger.debug("Estructura del archivo {} validada correctamente", archivoId);
+        return ResultadoValidacion.exitoso();
     }
 
     /**
@@ -142,6 +188,22 @@ public class ProcesarDescuentosService {
                 return procesamiento.toEstadoProcesamiento();
             }
 
+            // Obtener índices de los headers relevantes
+            String[] headersArchivo = parsearLinea(lineas.get(0));
+            int idxCodigoEmpleado = -1;
+            int idxValor = -1;
+            for (int i = 0; i < headersArchivo.length; i++) {
+                if (headersArchivo[i].trim().equalsIgnoreCase("CODEMPLEADO")) {
+                    idxCodigoEmpleado = i;
+                }
+                if (headersArchivo[i].trim().equalsIgnoreCase("VALOR")) {
+                    idxValor = i;
+                }
+            }
+            if (idxCodigoEmpleado == -1 || idxValor == -1) {
+                throw new RuntimeException("No se encontraron los headers CODEMPLEADO y VALOR");
+            }
+
             // Iniciar procesamiento
             int totalLineasDatos = lineas.size() - 1; // Excluir header
             procesamiento.iniciarProcesamiento(totalLineasDatos);
@@ -151,6 +213,8 @@ public class ProcesarDescuentosService {
             // Procesar líneas en lotes
             List<DescuentoValidado> descuentosLote = new ArrayList<>();
             List<ErrorProcesamiento> erroresLote = new ArrayList<>();
+            // Set para evitar duplicados en el lote
+            java.util.Set<String> clavesUnicasLote = new java.util.HashSet<>();
 
             for (int i = 1; i < lineas.size(); i++) { // Empezar desde 1 para saltar header
                 try {
@@ -161,34 +225,73 @@ public class ProcesarDescuentosService {
                     }
 
                     String[] campos = parsearLinea(lineaTexto);
-                    logger.debug("Procesando línea {} con {} campos", i + 1, campos.length);
-
-                    LineaDescuento linea = new LineaDescuento(campos, i + 1);
+                    Map<String, String> camposPorNombre = new java.util.HashMap<>();
+                    for (int j = 0; j < headersArchivo.length && j < campos.length; j++) {
+                        camposPorNombre.put(headersArchivo[j].trim(), campos[j].trim());
+                    }
+                    String codigoEmpleado = camposPorNombre.get("CODEMPLEADO");
+                    String valorStr = camposPorNombre.get("VALOR");
+                    // Validar presencia de campos obligatorios antes de crear LineaDescuento
+                    boolean faltanCamposObligatorios = false;
+                    StringBuilder camposFaltantes = new StringBuilder();
+                    // Solo exigir CODEMPLEADO y VALOR
+                    String[] obligatorios = {"CODEMPLEADO", "VALOR"};
+                    for (String campo : obligatorios) {
+                        if (camposPorNombre.get(campo) == null || camposPorNombre.get(campo).trim().isEmpty()) {
+                            faltanCamposObligatorios = true;
+                            if (camposFaltantes.length() > 0) camposFaltantes.append(", ");
+                            camposFaltantes.append(campo);
+                        }
+                    }
+                    if (faltanCamposObligatorios) {
+                        logger.debug("Línea {} faltan campos obligatorios: {}", i + 1, camposFaltantes);
+                        ErrorProcesamiento error = new ErrorProcesamiento(
+                                archivoId, TipoArchivo.DESCUENTOS, i + 1, null,
+                                archivo.getPeriodo(), archivo.getSeccionalId(),
+                                TipoError.CAMPO_OBLIGATORIO_FALTANTE,
+                                "Faltan campos obligatorios: " + camposFaltantes,
+                                lineaTexto
+                        );
+                        erroresLote.add(error);
+                        procesamiento.registrarLineaProcesada(false);
+                        continue;
+                    }
+                    // Crear LineaDescuento con el Map y el número de línea
+                    LineaDescuento linea = new LineaDescuento(camposPorNombre, i + 1);
 
                     // Validar línea
-                    ResultadoValidacion resultado = cadenaValidadores.validar(linea, archivo.getSeccionalId());
+                    ResultadoValidacion resultado = configurarCadenaValidadores().validar(linea, archivo.getSeccionalId());
                     logger.debug("Validación de línea {}: {}", i + 1, resultado.esValido() ? "EXITOSA" : "CON ERRORES");
 
                     if (resultado.esValido()) {
-                        // Verificar duplicados
+                        // Generar clave única para el lote
+                        String claveUnica = linea.getCodigoEmpleado() + "|" + archivo.getSeccionalId() + "|" + archivo.getPeriodo() + "|" + linea.getCodigoConcepto() + "|" + archivoId;
+                        if (clavesUnicasLote.contains(claveUnica)) {
+                            logger.debug("Línea {} es duplicada en el lote para clave {}", i + 1, claveUnica);
+                            ErrorProcesamiento error = ErrorProcesamiento.deLineaDescuento(
+                                    archivoId, linea, new ErrorValidacion(
+                                            TipoError.DUPLICADO_PERIODO,
+                                            String.format("Descuento duplicado en el lote para cliente %s en período %s, concepto %s",
+                                                    linea.getCodigoEmpleado(), archivo.getPeriodo(), linea.getCodigoConcepto())
+                                    )
+                            );
+                            erroresLote.add(error);
+                            procesamiento.registrarLineaProcesada(false);
+                            continue;
+                        }
+                        clavesUnicasLote.add(claveUnica);
+                        // Verificar duplicados en la base de datos
                         if (!descuentoRepository.existeDescuentoPeriodo(
                                 linea.getCodigoEmpleado(), archivo.getPeriodo(), linea.getCodigoConcepto())) {
-
-                            // Obtener información del cliente
                             ClienteService.ClienteInfo clienteInfo = resultado.getDatosAdicionales(ClienteService.ClienteInfo.class);
-                            Integer clienteId = clienteInfo != null ? clienteInfo.getId() :
-                                    obtenerClienteIdFallback(linea.getCodigoEmpleado());
-
-                            // Obtener productos activos y calcular valor esperado
+                            Integer clienteId = clienteInfo != null ? clienteInfo.getId() : obtenerClienteIdFallback(linea.getCodigoEmpleado());
                             List<ProductoInfo> productosActivos = validadorProductos.obtenerProductosActivos(clienteId);
                             java.math.BigDecimal valorEsperado = productosActivos.stream()
                                     .map(p -> p.getValorCuotaMensual() != null ? p.getValorCuotaMensual() : java.math.BigDecimal.ZERO)
                                     .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-
                             DescuentoValidado descuento = DescuentoValidado.fromLineaDescuento(
-                                    linea, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId, valorEsperado
+                                    linea, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId, valorEsperado, valorEsperado
                             );
-                            // Calcular estado según diferencia
                             if (descuento.getValor().compareTo(valorEsperado) < 0) {
                                 descuento.setEstado("FALTANTE");
                             } else if (descuento.getValor().compareTo(valorEsperado) > 0) {
@@ -200,21 +303,19 @@ public class ProcesarDescuentosService {
                             procesamiento.registrarLineaProcesada(true);
                             logger.debug("Línea {} agregada como descuento válido", i + 1);
                         } else {
-                            // Duplicado
-                            logger.debug("Línea {} es duplicada para cliente {} en período {}",
+                            logger.debug("Línea {} es duplicada en BD para cliente {} en período {}",
                                     i + 1, linea.getCodigoEmpleado(), archivo.getPeriodo());
                             ErrorProcesamiento error = ErrorProcesamiento.deLineaDescuento(
                                     archivoId, linea, new ErrorValidacion(
                                             TipoError.DUPLICADO_PERIODO,
-                                            String.format("Descuento duplicado para cliente %s en período %s",
-                                                    linea.getCodigoEmpleado(), archivo.getPeriodo())
+                                            String.format("Descuento duplicado en BD para cliente %s en período %s, concepto %s",
+                                                    linea.getCodigoEmpleado(), archivo.getPeriodo(), linea.getCodigoConcepto())
                                     )
                             );
                             erroresLote.add(error);
                             procesamiento.registrarLineaProcesada(false);
                         }
                     } else {
-                        // Línea con errores
                         logger.debug("Línea {} tiene {} errores de validación", i + 1, resultado.getErrores().size());
                         for (ErrorValidacion errorValidacion : resultado.getErrores()) {
                             ErrorProcesamiento error = ErrorProcesamiento.deLineaDescuento(
@@ -225,16 +326,16 @@ public class ProcesarDescuentosService {
                         procesamiento.registrarLineaProcesada(false);
                     }
 
-                    // Guardar lote si alcanzó el tamaño configurado
                     if (descuentosLote.size() >= tamanoLote || erroresLote.size() >= tamanoLote) {
                         logger.debug("Guardando lote: {} descuentos, {} errores", descuentosLote.size(), erroresLote.size());
                         guardarLotes(descuentosLote, erroresLote);
                         descuentosLote.clear();
                         erroresLote.clear();
+                        clavesUnicasLote.clear();
                     }
 
                 } catch (Exception e) {
-                    logger.error("Error procesando línea {} del archivo {}", i + 1, archivoId, e);
+                    logger.error("Error procesando línea {} del archivo {}: {}", i + 1, archivoId, e.getMessage());
                     ErrorProcesamiento error = new ErrorProcesamiento(
                             archivoId, TipoArchivo.DESCUENTOS, i + 1, null,
                             archivo.getPeriodo(), archivo.getSeccionalId(),
@@ -287,6 +388,186 @@ public class ProcesarDescuentosService {
     }
 
     /**
+     * Procesa un archivo de descuentos a partir de filas (List<String[]>) para soportar XLSX nativo
+     */
+    public EstadoProcesamiento procesarArchivoDesdeFilas(Long archivoId, List<String[]> filas) {
+        logger.info("=== INICIANDO PROCESAMIENTO DESDE FILAS PARA ARCHIVO {} ===", archivoId);
+
+        ArchivoDescuentos archivo = archivoRepository.buscarPorId(archivoId)
+                .orElseThrow(() -> new ArchivoNoEncontradoException("Archivo no encontrado: " + archivoId));
+
+        // Cambiar estado a PROCESANDO al inicio
+        try {
+            archivo.setEstado(EstadoArchivo.PROCESANDO);
+            archivoRepository.guardar(archivo);
+            logger.info("Estado del archivo {} cambiado a PROCESANDO", archivoId);
+        } catch (Exception e) {
+            logger.error("Error al cambiar estado a PROCESANDO para archivo {}", archivoId, e);
+            throw new RuntimeException("Error al inicializar procesamiento", e);
+        }
+
+        ProcesamientoDescuentos procesamiento = new ProcesamientoDescuentos(
+                archivoId, archivo.getPeriodo(), archivo.getSeccionalId()
+        );
+
+        try {
+            ValidadorLinea cadenaValidadores = configurarCadenaValidadores();
+            logger.info("Cadena de validadores configurada para archivo: {}", archivoId);
+
+            if (filas == null || filas.isEmpty()) {
+                procesamiento.marcarConError("El archivo está vacío");
+                archivo.setEstado(EstadoArchivo.ERROR);
+                archivoRepository.guardar(archivo);
+                return procesamiento.toEstadoProcesamiento();
+            }
+            if (filas.size() < 2) {
+                procesamiento.marcarConError("El archivo debe contener al menos una línea de datos además del header");
+                archivo.setEstado(EstadoArchivo.ERROR);
+                archivoRepository.guardar(archivo);
+                return procesamiento.toEstadoProcesamiento();
+            }
+
+            // Normalizar headers
+            String[] headersArchivo = filas.get(0);
+            for (int h = 0; h < headersArchivo.length; h++) {
+                headersArchivo[h] = headersArchivo[h].replace("\"", "").trim().toUpperCase();
+            }
+            boolean tieneCodigoEmpleado = false;
+            boolean tieneValor = false;
+            for (String h : headersArchivo) {
+                if (h.equals("CODEMPLEADO")) tieneCodigoEmpleado = true;
+                if (h.equals("VALOR")) tieneValor = true;
+            }
+            if (!tieneCodigoEmpleado || !tieneValor) {
+                procesamiento.marcarConError("El archivo debe contener los headers CODEMPLEADO y VALOR");
+                archivo.setEstado(EstadoArchivo.ERROR);
+                archivoRepository.guardar(archivo);
+                return procesamiento.toEstadoProcesamiento();
+            }
+
+            int totalLineasDatos = filas.size() - 1;
+            procesamiento.iniciarProcesamiento(totalLineasDatos);
+            logger.info("Procesando {} líneas de datos para archivo {}", totalLineasDatos, archivoId);
+
+            // Agrupar descuentos por cliente/concepto/período/seccional/archivo y sumar valores
+            Map<String, List<LineaDescuento>> descuentosPorClave = new java.util.HashMap<>();
+            List<ErrorProcesamiento> erroresLote = new ArrayList<>();
+            for (int i = 1; i < filas.size(); i++) { // Empezar desde 1 para saltar header
+                try {
+                    String[] campos = filas.get(i);
+                    // Filtrar líneas vacías o con todos los campos vacíos
+                    boolean todosVacios = true;
+                    for (String campo : campos) {
+                        if (campo != null && !campo.trim().isEmpty()) {
+                            todosVacios = false;
+                            break;
+                        }
+                    }
+                    if (campos.length == 0 || todosVacios) {
+                        continue; // Saltar líneas vacías
+                    }
+                    for (int c = 0; c < campos.length; c++) {
+                        campos[c] = campos[c].replace("\"", "").trim();
+                    }
+                    Map<String, String> camposPorNombre = new java.util.HashMap<>();
+                    for (int j = 0; j < headersArchivo.length && j < campos.length; j++) {
+                        camposPorNombre.put(headersArchivo[j], campos[j]);
+                    }
+                    boolean faltanCamposObligatorios = false;
+                    StringBuilder camposFaltantes = new StringBuilder();
+                    String[] obligatorios = {"CODEMPLEADO", "VALOR"};
+                    for (String campo : obligatorios) {
+                        if (camposPorNombre.get(campo) == null || camposPorNombre.get(campo).trim().isEmpty()) {
+                            faltanCamposObligatorios = true;
+                            if (!camposFaltantes.isEmpty()) camposFaltantes.append(", ");
+                            camposFaltantes.append(campo);
+                        }
+                    }
+                    if (faltanCamposObligatorios) {
+                        ErrorProcesamiento error = new ErrorProcesamiento(
+                                archivoId, TipoArchivo.DESCUENTOS, i + 1, null,
+                                archivo.getPeriodo(), archivo.getSeccionalId(),
+                                TipoError.CAMPO_OBLIGATORIO_FALTANTE,
+                                "Faltan campos obligatorios: " + camposFaltantes,
+                                String.join(",", campos)
+                        );
+                        erroresLote.add(error);
+                        procesamiento.registrarLineaProcesada(false);
+                        continue;
+                    }
+                    LineaDescuento linea = new LineaDescuento(camposPorNombre, i + 1);
+                    String clave = linea.getCodigoEmpleado() + "|" + linea.getCodigoConcepto() + "|" + archivo.getPeriodo() + "|" + archivo.getSeccionalId() + "|" + archivoId;
+                    descuentosPorClave.computeIfAbsent(clave, k -> new ArrayList<>()).add(linea);
+                    procesamiento.registrarLineaProcesada(true);
+                } catch (Exception e) {
+                    ErrorProcesamiento error = new ErrorProcesamiento(
+                            archivoId, TipoArchivo.DESCUENTOS, i + 1, null,
+                            archivo.getPeriodo(), archivo.getSeccionalId(),
+                            TipoError.ERROR_PROCESAMIENTO,
+                            "Error inesperado: " + e.getMessage(),
+                            String.join(",", filas.get(i))
+                    );
+                    erroresLote.add(error);
+                    procesamiento.registrarLineaProcesada(false);
+                }
+            }
+
+            // Procesar descuentos agrupados
+            List<DescuentoValidado> descuentosLote = new ArrayList<>();
+            for (Map.Entry<String, List<LineaDescuento>> entry : descuentosPorClave.entrySet()) {
+                List<LineaDescuento> grupo = entry.getValue();
+                BigDecimal totalDescuento = grupo.stream().map(LineaDescuento::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
+                LineaDescuento base = grupo.get(0);
+                ResultadoValidacion resultado = cadenaValidadores.validar(base, archivo.getSeccionalId());
+                if (resultado.esValido()) {
+                    if (!descuentoRepository.existeDescuentoPeriodo(
+                            base.getCodigoEmpleado(), archivo.getPeriodo(), base.getCodigoConcepto())) {
+                        ClienteService.ClienteInfo clienteInfo = resultado.getDatosAdicionales(ClienteService.ClienteInfo.class);
+                        Integer clienteId = clienteInfo != null ? clienteInfo.getId() : obtenerClienteIdFallback(base.getCodigoEmpleado());
+                        List<ProductoInfo> productosActivos = validadorProductos.obtenerProductosActivos(clienteId);
+                        BigDecimal valorEsperado = productosActivos.stream()
+                                .map(p -> p.getValorCuotaMensual() != null ? p.getValorCuotaMensual() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        DescuentoValidado descuento = DescuentoValidado.fromLineaDescuento(
+                                base, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId, valorEsperado, totalDescuento
+                        );
+                        // Ya no es necesario setValor ni lógica de estado aquí
+                        descuentosLote.add(descuento);
+                    } else {
+                        ErrorProcesamiento error = ErrorProcesamiento.deLineaDescuento(
+                                archivoId, base, new ErrorValidacion(
+                                        TipoError.DUPLICADO_PERIODO,
+                                        String.format("Descuento duplicado en BD para cliente %s en período %s, concepto %s",
+                                                base.getCodigoEmpleado(), archivo.getPeriodo(), base.getCodigoConcepto())
+                                )
+                        );
+                        erroresLote.add(error);
+                    }
+                } else {
+                    for (ErrorValidacion errorValidacion : resultado.getErrores()) {
+                        ErrorProcesamiento error = ErrorProcesamiento.deLineaDescuento(
+                                archivoId, base, errorValidacion
+                        );
+                        erroresLote.add(error);
+                    }
+                }
+            }
+
+            // Guardar lote final
+            guardarLotes(descuentosLote, erroresLote);
+            procesamiento.completarProcesamiento();
+            actualizarEstadoArchivo(archivo, procesamiento);
+            return procesamiento.toEstadoProcesamiento();
+
+        } catch (Exception e) {
+            archivo.setEstado(EstadoArchivo.ERROR);
+            archivoRepository.guardar(archivo);
+            procesamiento.marcarConError("Error durante procesamiento: " + e.getMessage());
+            return procesamiento.toEstadoProcesamiento();
+        }
+    }
+
+    /**
      * Configura la cadena de validadores
      */
     private ValidadorLinea configurarCadenaValidadores() {
@@ -317,75 +598,6 @@ public class ProcesarDescuentosService {
             throw new RuntimeException("Error al leer líneas del archivo", e);
         }
         return lineas;
-    }
-
-    /**
-     * Valida la estructura básica del archivo
-     */
-    private ResultadoValidacion validarEstructuraArchivo(List<String> lineas, Long archivoId) {
-        logger.debug("Validando estructura del archivo {}", archivoId);
-
-        if (lineas.isEmpty()) {
-            return ResultadoValidacion.conError(
-                    TipoError.ARCHIVO_VACIO,
-                    "El archivo está vacío"
-            );
-        }
-
-        if (lineas.size() < 2) {
-            return ResultadoValidacion.conError(
-                    TipoError.ARCHIVO_VACIO,
-                    "El archivo debe contener al menos una línea de datos además del header"
-            );
-        }
-
-        // Validar headers
-        String header = lineas.get(0);
-        String[] headersArchivo = parsearLinea(header);
-        String[] headersEsperadosArray = headersEsperados.split(",");
-
-        logger.debug("Headers del archivo: {}", (Object) headersArchivo);
-        logger.debug("Headers esperados: {}", (Object) headersEsperadosArray);
-
-        if (headersArchivo.length != headersEsperadosArray.length) {
-            return ResultadoValidacion.conError(
-                    TipoError.HEADERS_INCORRECTOS,
-                    String.format("Se esperan %d columnas, se encontraron %d",
-                            headersEsperadosArray.length, headersArchivo.length)
-            );
-        }
-
-        // Validar nombres de headers (case-insensitive)
-        for (int i = 0; i < headersEsperadosArray.length; i++) {
-            if (!headersArchivo[i].trim().equalsIgnoreCase(headersEsperadosArray[i].trim())) {
-                return ResultadoValidacion.conError(
-                        TipoError.HEADERS_INCORRECTOS,
-                        String.format("Header en posición %d: se esperaba '%s', se encontró '%s'",
-                                i + 1, headersEsperadosArray[i], headersArchivo[i])
-                );
-            }
-        }
-
-        logger.debug("Estructura del archivo {} validada correctamente", archivoId);
-        return ResultadoValidacion.exitoso();
-    }
-
-    /**
-     * Parsea una línea CSV simple
-     */
-    private String[] parsearLinea(String linea) {
-        // Parser simple para CSV - en producción usar librería especializada como OpenCSV
-        String[] campos = linea.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-
-        // Limpiar comillas de los campos
-        for (int i = 0; i < campos.length; i++) {
-            campos[i] = campos[i].trim();
-            if (campos[i].startsWith("\"") && campos[i].endsWith("\"")) {
-                campos[i] = campos[i].substring(1, campos[i].length() - 1);
-            }
-        }
-
-        return campos;
     }
 
     /**
@@ -496,6 +708,32 @@ public class ProcesarDescuentosService {
             logger.error("Error al obtener estadísticas para archivo {}", archivoId, e);
             return null;
         }
+    }
+
+    /**
+     * Parsea una línea de texto en campos usando el delimitador CSV (coma por defecto).
+     * Si el archivo usa otro delimitador (por ejemplo, punto y coma), ajusta aquí.
+     * Maneja comillas para campos con delimitadores internos.
+     */
+    private String[] parsearLinea(String linea) {
+        // Usar una librería robusta para CSV si el formato es complejo (OpenCSV, Apache Commons CSV)
+        // Aquí una versión simple para CSV estándar:
+        List<String> campos = new ArrayList<>();
+        boolean enComillas = false;
+        StringBuilder campo = new StringBuilder();
+        for (int i = 0; i < linea.length(); i++) {
+            char c = linea.charAt(i);
+            if (c == '"') {
+                enComillas = !enComillas;
+            } else if (c == ',' && !enComillas) {
+                campos.add(campo.toString().trim());
+                campo.setLength(0);
+            } else {
+                campo.append(c);
+            }
+        }
+        campos.add(campo.toString().trim());
+        return campos.toArray(new String[0]);
     }
 
     /**

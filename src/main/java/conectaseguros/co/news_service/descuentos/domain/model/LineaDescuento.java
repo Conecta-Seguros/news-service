@@ -3,6 +3,7 @@ package conectaseguros.co.news_service.descuentos.domain.model;
 import conectaseguros.co.news_service.descuentos.domain.exceptions.LineaDescuentoInvalidaException;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Objects;
 
 public class LineaDescuento {
@@ -22,27 +23,22 @@ public class LineaDescuento {
     private final int numeroLinea;
     private Integer clienteId;
 
-    public LineaDescuento(String[] campos, int numeroLinea) {
-        if (campos == null || campos.length < 12) {
-            throw new LineaDescuentoInvalidaException(
-                    String.format("Línea %d: Se esperan 12 campos, se encontraron %d",
-                            numeroLinea, campos != null ? campos.length : 0)
-            );
-        }
-
+    public LineaDescuento(Map<String, String> camposPorNombre, int numeroLinea) {
         this.numeroLinea = numeroLinea;
-        this.tercero = validarCampoObligatorio(campos[0], "TERCERO", numeroLinea);
-        this.nit = validarCampoObligatorio(campos[1], "NIT", numeroLinea);
-        this.codigoConcepto = validarCampoObligatorio(campos[2], "CODCONCEPTO", numeroLinea);
-        this.concepto = validarCampoObligatorio(campos[3], "CONCEPTO", numeroLinea);
-        this.codigoEmpleado = validarCedulaEmpleado(campos[4], numeroLinea);
-        this.nombre1 = validarCampoObligatorio(campos[5], "Nombre1", numeroLinea);
-        this.nombre2 = campos[6] != null ? campos[6].trim() : ""; // Opcional
-        this.apellido1 = validarCampoObligatorio(campos[7], "Apellido1", numeroLinea);
-        this.apellido2 = campos[8] != null ? campos[8].trim() : ""; // Opcional
-        this.codigoUnidadEjecutora = validarCampoObligatorio(campos[9], "COD_UNIDAD_EJECUTORA", numeroLinea);
-        this.valor = validarValor(campos[10], numeroLinea);
-        this.nomina = validarCampoObligatorio(campos[11], "NOMINA", numeroLinea);
+        // Solo exigir CODEMPLEADO y VALOR como obligatorios
+        this.codigoEmpleado = validarCedulaEmpleado(camposPorNombre.get("CODEMPLEADO"), numeroLinea);
+        this.valor = validarValor(camposPorNombre.get("VALOR"), numeroLinea);
+        // Los demás campos son opcionales
+        this.tercero = camposPorNombre.get("TERCERO") != null ? camposPorNombre.get("TERCERO").trim() : "";
+        this.nit = camposPorNombre.get("NIT") != null ? camposPorNombre.get("NIT").trim() : "";
+        this.codigoConcepto = camposPorNombre.get("CODCONCEPTO") != null ? camposPorNombre.get("CODCONCEPTO").trim() : "";
+        this.concepto = camposPorNombre.get("CONCEPTO") != null ? camposPorNombre.get("CONCEPTO").trim() : "";
+        this.nombre1 = camposPorNombre.get("Nombre1") != null ? camposPorNombre.get("Nombre1").trim() : "";
+        this.nombre2 = camposPorNombre.get("Nombre2") != null ? camposPorNombre.get("Nombre2").trim() : "";
+        this.apellido1 = camposPorNombre.get("Apellido1") != null ? camposPorNombre.get("Apellido1").trim() : "";
+        this.apellido2 = camposPorNombre.get("Apellido2") != null ? camposPorNombre.get("Apellido2").trim() : "";
+        this.codigoUnidadEjecutora = camposPorNombre.get("COD_UNIDAD_EJECUTORA") != null ? camposPorNombre.get("COD_UNIDAD_EJECUTORA").trim() : "";
+        this.nomina = camposPorNombre.get("NOMINA") != null ? camposPorNombre.get("NOMINA").trim() : "";
     }
 
     private String validarCampoObligatorio(String campo, String nombreCampo, int numeroLinea) {

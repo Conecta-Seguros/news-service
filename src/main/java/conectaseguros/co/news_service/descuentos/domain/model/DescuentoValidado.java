@@ -38,28 +38,34 @@ public class DescuentoValidado {
         this.valor = Objects.requireNonNull(valor, "Valor no puede ser null");
         this.valorEsperado = valorEsperado;
         this.diferencia = calcularDiferencia(valor, valorEsperado);
-        this.estado = "PENDIENTE";
+        // Estado correcto según diferencia
+        if (this.diferencia.compareTo(BigDecimal.ZERO) == 0) {
+            this.estado = "CONCILIADO";
+        } else if (this.diferencia.compareTo(BigDecimal.ZERO) > 0) {
+            this.estado = "FALTANTE";
+        } else {
+            this.estado = "EXCEDENTE";
+        }
         this.archivoId = archivoId;
         this.fechaCreacion = LocalDateTime.now();
     }
 
     public static DescuentoValidado fromLineaDescuento(LineaDescuento linea, Integer clienteId,
                                                        Integer seccionalId, String periodo,
-                                                       Long archivoId, BigDecimal valorEsperado) {
-        // Extraer aseguradora del NIT (simplificado)
+                                                       Long archivoId, BigDecimal valorEsperado,
+                                                       BigDecimal valorTotal) {
         Integer aseguradoraId = extraerAseguradoraId(linea.getNit());
-
         return new DescuentoValidado(
                 clienteId,
                 seccionalId,
                 aseguradoraId,
                 linea.getCodigoEmpleado(),
                 periodo,
-                LocalDate.now(), // En producción sería la fecha del período
+                LocalDate.now(),
                 linea.getCodigoConcepto(),
-                null, // Se asignaría después del procesamiento
-                linea.getValor(),
-                valorEsperado, // Se pasa el valor esperado calculado
+                null,
+                valorTotal, // <-- Usar el total sumado
+                valorEsperado,
                 archivoId
         );
     }
@@ -84,7 +90,6 @@ public class DescuentoValidado {
     // Getters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
     public Integer getClienteId() { return clienteId; }
     public Integer getSeccionalId() { return seccionalId; }
     public Integer getAseguradoraId() { return aseguradoraId; }

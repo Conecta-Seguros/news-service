@@ -16,7 +16,16 @@ import java.util.List;
 public class ValidadorFormatoLinea implements ValidadorLinea {
 
     private static final Logger logger = LoggerFactory.getLogger(ValidadorFormatoLinea.class);
-
+    // Nombres de campos obligatorios centralizados
+    private static final String CAMPO_TERCERO = "TERCERO";
+    private static final String CAMPO_NIT = "NIT";
+    private static final String CAMPO_CODCONCEPTO = "CODCONCEPTO";
+    private static final String CAMPO_CODEMPLEADO = "CODEMPLEADO";
+    private static final String CAMPO_NOMBRE1 = "Nombre1";
+    private static final String CAMPO_APELLIDO1 = "Apellido1";
+    private static final String CAMPO_COD_UNIDAD_EJECUTORA = "COD_UNIDAD_EJECUTORA";
+    private static final String CAMPO_VALOR = "VALOR";
+    private static final String CAMPO_NOMINA = "NOMINA";
     private ValidadorLinea siguiente;
 
     @Override
@@ -57,26 +66,25 @@ public class ValidadorFormatoLinea implements ValidadorLinea {
         if (linea.getTercero() == null || linea.getTercero().trim().isEmpty()) {
             errores.add(new ErrorValidacion(
                     TipoError.CAMPO_OBLIGATORIO_FALTANTE,
-                    String.format("Línea %d: Campo TERCERO es obligatorio", linea.getNumeroLinea()),
-                    "TERCERO"
+                    String.format("Línea %d: Campo %s es obligatorio", linea.getNumeroLinea(), CAMPO_TERCERO),
+                    CAMPO_TERCERO
             ));
         }
-
         if (linea.getNit() == null || linea.getNit().trim().isEmpty()) {
             errores.add(new ErrorValidacion(
                     TipoError.CAMPO_OBLIGATORIO_FALTANTE,
-                    String.format("Línea %d: Campo NIT es obligatorio", linea.getNumeroLinea()),
-                    "NIT"
+                    String.format("Línea %d: Campo %s es obligatorio", linea.getNumeroLinea(), CAMPO_NIT),
+                    CAMPO_NIT
             ));
         }
-
         if (linea.getCodigoConcepto() == null || linea.getCodigoConcepto().trim().isEmpty()) {
             errores.add(new ErrorValidacion(
                     TipoError.CAMPO_OBLIGATORIO_FALTANTE,
-                    String.format("Línea %d: Campo CODCONCEPTO es obligatorio", linea.getNumeroLinea()),
-                    "CODCONCEPTO"
+                    String.format("Línea %d: Campo %s es obligatorio", linea.getNumeroLinea(), CAMPO_CODCONCEPTO),
+                    CAMPO_CODCONCEPTO
             ));
         }
+        // Puedes agregar aquí validaciones para otros campos obligatorios si lo requieres
     }
 
     private void validarLongitudesCampos(LineaDescuento linea, List<ErrorValidacion> errores) {

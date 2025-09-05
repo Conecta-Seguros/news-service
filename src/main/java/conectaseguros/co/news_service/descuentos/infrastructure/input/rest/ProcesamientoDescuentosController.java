@@ -1,6 +1,8 @@
 package conectaseguros.co.news_service.descuentos.infrastructure.input.rest;
 
+import conectaseguros.co.news_service.archivo.application.service.LeerArchivoService;
 import conectaseguros.co.news_service.archivo.domain.model.enums.EstadoArchivo;
+import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.common.util.ApiResponse;
 import conectaseguros.co.news_service.descuentos.application.service.ConsultaProcesamientoService;
 import conectaseguros.co.news_service.descuentos.application.service.ProcesarDescuentosService;
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v1/news/descuentos")
@@ -31,11 +32,14 @@ public class ProcesamientoDescuentosController {
 
     private final ProcesarDescuentosService procesarService;
     private final ConsultaProcesamientoService consultaService;
+    private final LeerArchivoService leerArchivoService;
 
     public ProcesamientoDescuentosController(ProcesarDescuentosService procesarService,
-                                             ConsultaProcesamientoService consultaService) {
+                                             ConsultaProcesamientoService consultaService,
+                                             LeerArchivoService leerArchivoService) {
         this.procesarService = procesarService;
         this.consultaService = consultaService;
+        this.leerArchivoService = leerArchivoService;
     }
 
     @PostMapping("/archivos/{archivoId}/procesar")
@@ -49,35 +53,35 @@ public class ProcesamientoDescuentosController {
         try {
             logger.info("Iniciando procesamiento de archivo de descuentos: {}", archivoId);
 
-            // ✅ AGREGAR: Verificar que el archivo existe primero
             EstadoProcesamiento estadoActual = consultaService.obtenerEstadoProcesamiento(archivoId);
             logger.info("Estado actual del archivo {}: {}", archivoId, estadoActual.getEstado());
 
-            // Verificar si ya está en procesamiento
             if (consultaService.estaEnProcesamiento(archivoId)) {
                 logger.warn("Archivo {} ya está siendo procesado", archivoId);
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.error("El archivo ya está siendo procesado"));
             }
 
-            // ✅ AGREGAR: Verificar que el estado permite procesamiento
             if (estadoActual.getEstado() == EstadoArchivo.PROCESADO) {
                 logger.warn("Archivo {} ya fue procesado", archivoId);
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.error("El archivo ya fue procesado"));
             }
 
-            // Iniciar procesamiento asíncrono
-            logger.info("Iniciando procesamiento asíncrono para archivo: {}", archivoId);
-            CompletableFuture<EstadoProcesamiento> futuro = procesarService.procesarArchivo(archivoId);
+            // Obtener nombre y tipo de archivo
+            String nombreArchivo = leerArchivoService.obtenerNombreArchivo(archivoId, TipoArchivo.DESCUENTOS);
+            String extension = nombreArchivo != null && nombreArchivo.contains(".") ? nombreArchivo.substring(nombreArchivo.lastIndexOf(".") + 1).toLowerCase() : "";
 
-            // ✅ AGREGAR: Log para confirmar que se inició
-            logger.info("Procesamiento asíncrono iniciado para archivo: {}", archivoId);
+            // Leer archivo como filas
+            List<String[]> filas = leerArchivoService.leerArchivoDesdeBytes(
+                leerArchivoService.obtenerContenidoArchivo(archivoId, TipoArchivo.DESCUENTOS),
+                nombreArchivo
+            );
 
-            // Obtener estado inicial actualizado
-            EstadoProcesamiento estadoInicial = consultaService.obtenerEstadoProcesamiento(archivoId);
-            ProcesamientoResponseDTO response = new ProcesamientoResponseDTO(archivoId, estadoInicial);
+            // Procesar archivo nativamente desde filas
+            EstadoProcesamiento estadoProcesamiento = procesarService.procesarArchivoDesdeFilas(archivoId, filas);
 
+            ProcesamientoResponseDTO response = new ProcesamientoResponseDTO(archivoId, estadoProcesamiento);
             logger.info("Procesamiento iniciado exitosamente para archivo: {}", archivoId);
 
             return ResponseEntity.accepted()
