@@ -29,24 +29,24 @@ public class ValidadorProductos implements ValidadorLinea {
         logger.debug("Validando productos para línea: {} - Cliente: {}",
                 linea.getNumeroLinea(), linea.getCodigoEmpleado());
 
-        // Obtener el id del cliente directamente del objeto LineaDescuento
-        Integer clienteId = linea.getClienteId();
+        // Usar directamente la cédula del empleado/cliente desde LineaDescuento
+        String clienteCedula = linea.getCodigoEmpleado();
 
-        if (clienteId == null) {
-            logger.warn("No se pudo obtener ID de cliente para validar productos: {}",
-                    linea.getCodigoEmpleado());
+        if (clienteCedula == null || clienteCedula.trim().isEmpty()) {
+            logger.warn("No se pudo obtener cédula de cliente para validar productos en línea: {}",
+                    linea.getNumeroLinea());
             return ResultadoValidacion.conError(
                 TipoError.ERROR_COMUNICACION_PRODUCTOS,
-                "No se pudo obtener el ID del cliente para la validación de productos"
+                "No se pudo obtener la cédula del cliente para la validación de productos"
             );
         }
 
-        // Validar si el cliente tiene productos usando HEAD
+        // Validar si el cliente tiene productos usando HEAD con la nueva implementación
         boolean tieneProductos = false;
         try {
-            tieneProductos = productoService.clienteTieneProductos(clienteId);
+            tieneProductos = productoService.clienteTieneProductosPorCedula(clienteCedula);
         } catch (Exception e) {
-            logger.error("Error al validar existencia de productos para cliente {}: {}", clienteId, e.getMessage());
+            logger.error("Error al validar existencia de productos para cliente cédula {}: {}", clienteCedula, e.getMessage());
             return ResultadoValidacion.conError(
                 TipoError.ERROR_COMUNICACION_PRODUCTOS,
                 "Error al validar existencia de productos: " + e.getMessage()
@@ -54,20 +54,20 @@ public class ValidadorProductos implements ValidadorLinea {
         }
 
         if (!tieneProductos) {
-            logger.debug("Cliente {} no tiene productos asociados", clienteId);
+            logger.debug("Cliente cédula {} no tiene productos asociados", clienteCedula);
             return ResultadoValidacion.conError(
                 TipoError.SIN_PRODUCTOS_ACTIVOS,
-                String.format("Cliente %d no tiene productos asociados", clienteId)
+                String.format("Cliente con cédula %s no tiene productos asociados", clienteCedula)
             );
         }
 
-        // Validar productos activos
-        var productosActivos = productoService.obtenerProductosActivos(clienteId);
+        // Validar productos activos usando el nuevo método
+        var productosActivos = productoService.obtenerProductosActivosPorCedula(clienteCedula);
         if (productosActivos == null || productosActivos.isEmpty()) {
-            logger.debug("Cliente {} no tiene productos activos", clienteId);
+            logger.debug("Cliente cédula {} no tiene productos activos", clienteCedula);
             return ResultadoValidacion.conError(
                 TipoError.SIN_PRODUCTOS_ACTIVOS,
-                String.format("Cliente %d no tiene productos activos", clienteId)
+                String.format("Cliente con cédula %s no tiene productos activos", clienteCedula)
             );
         }
 
@@ -78,14 +78,17 @@ public class ValidadorProductos implements ValidadorLinea {
 
         // Validar que el valor solicitado en la línea no exceda el valor permitido
         if (linea.getValor().compareTo(valorMaximoDescuento) > 0) {
-            logger.debug("Descuento solicitado ({}) excede el máximo permitido ({}) para cliente {}", linea.getValor(), valorMaximoDescuento, clienteId);
+            logger.debug("Descuento solicitado ({}) excede el máximo permitido ({}) para cliente cédula {}",
+                linea.getValor(), valorMaximoDescuento, clienteCedula);
             return ResultadoValidacion.conError(
                 TipoError.ERROR_DESCUENTO_EXCEDE_MAXIMO,
-                String.format("El descuento solicitado (%.2f) excede el máximo permitido (%.2f) por los productos activos del cliente %d", linea.getValor(), valorMaximoDescuento, clienteId)
+                String.format("El descuento solicitado (%.2f) excede el máximo permitido (%.2f) por los productos activos del cliente con cédula %s",
+                    linea.getValor(), valorMaximoDescuento, clienteCedula)
             );
         }
 
-        logger.debug("Descuento solicitado ({}) es válido para cliente {} (máximo permitido: {})", linea.getValor(), clienteId, valorMaximoDescuento);
+        logger.debug("Descuento solicitado ({}) es válido para cliente cédula {} (máximo permitido: {})",
+            linea.getValor(), clienteCedula, valorMaximoDescuento);
 
         // Continuar con el siguiente validador
         if (siguiente != null) {
@@ -101,6 +104,19 @@ public class ValidadorProductos implements ValidadorLinea {
         return this;
     }
 
+    /**
+     * Obtener productos activos por cédula (método actualizado)
+     * @param clienteCedula Cédula del cliente
+     * @return Lista de productos activos
+     */
+    public List<ProductoInfo> obtenerProductosActivos(String clienteCedula) {
+        return productoService.obtenerProductosActivosPorCedula(clienteCedula);
+    }
+
+    /**
+     * @deprecated Usar obtenerProductosActivos(String clienteCedula) en su lugar
+     */
+    @Deprecated
     public List<ProductoInfo> obtenerProductosActivos(Integer clienteId) {
         return productoService.obtenerProductosActivos(clienteId);
     }

@@ -42,6 +42,21 @@ public interface DescuentoJpaRepository extends JpaRepository<DescuentoEntity, L
                                                     @Param("periodo") String periodo);
 
     /**
+     * Busca descuentos por seccional y período con paginación
+     */
+    @Query("SELECT d FROM DescuentoEntity d WHERE d.seccionalId = :seccionalId AND d.periodo = :periodo ORDER BY d.fechaCreacion DESC")
+    Page<DescuentoEntity> findBySeccionalAndPeriodo(@Param("seccionalId") Integer seccionalId,
+                                                    @Param("periodo") String periodo,
+                                                    Pageable pageable);
+
+    /**
+     * Cuenta descuentos por seccional y período
+     */
+    @Query("SELECT COUNT(d) FROM DescuentoEntity d WHERE d.seccionalId = :seccionalId AND d.periodo = :periodo")
+    long countBySeccionalAndPeriodo(@Param("seccionalId") Integer seccionalId,
+                                   @Param("periodo") String periodo);
+
+    /**
      * Cuenta descuentos por archivo
      */
     long countByArchivoId(Long archivoId);
@@ -71,3 +86,4 @@ public interface DescuentoJpaRepository extends JpaRepository<DescuentoEntity, L
         """)
     Object[] getEstadisticasByArchivo(@Param("archivoId") Long archivoId);
 }
+

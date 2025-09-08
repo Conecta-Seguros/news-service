@@ -4,10 +4,14 @@ import conectaseguros.co.news_service.archivo.application.service.LeerArchivoSer
 import conectaseguros.co.news_service.archivo.domain.model.enums.EstadoArchivo;
 import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.common.util.ApiResponse;
+import conectaseguros.co.news_service.descuentos.application.mapper.DescuentoProcesadoMapper;
+import conectaseguros.co.news_service.descuentos.application.service.ConsultaDescuentosProcesadosService;
 import conectaseguros.co.news_service.descuentos.application.service.ConsultaProcesamientoService;
 import conectaseguros.co.news_service.descuentos.application.service.ProcesarDescuentosService;
+import conectaseguros.co.news_service.descuentos.domain.model.DescuentoProcesado;
 import conectaseguros.co.news_service.descuentos.domain.model.ErrorProcesamiento;
 import conectaseguros.co.news_service.descuentos.domain.model.EstadoProcesamiento;
+import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.DescuentoProcesadoDTO;
 import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.ErrorProcesamientoDTO;
 import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.EstadisticasProcesamientoDTO;
 import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.ProcesamientoResponseDTO;
@@ -33,13 +37,19 @@ public class ProcesamientoDescuentosController {
     private final ProcesarDescuentosService procesarService;
     private final ConsultaProcesamientoService consultaService;
     private final LeerArchivoService leerArchivoService;
+    private final ConsultaDescuentosProcesadosService consultaDescuentosService;
+    private final DescuentoProcesadoMapper descuentoMapper;
 
     public ProcesamientoDescuentosController(ProcesarDescuentosService procesarService,
                                              ConsultaProcesamientoService consultaService,
-                                             LeerArchivoService leerArchivoService) {
+                                             LeerArchivoService leerArchivoService,
+                                             ConsultaDescuentosProcesadosService consultaDescuentosService,
+                                             DescuentoProcesadoMapper descuentoMapper) {
         this.procesarService = procesarService;
         this.consultaService = consultaService;
         this.leerArchivoService = leerArchivoService;
+        this.consultaDescuentosService = consultaDescuentosService;
+        this.descuentoMapper = descuentoMapper;
     }
 
     @PostMapping("/archivos/{archivoId}/procesar")
@@ -189,6 +199,103 @@ public class ProcesamientoDescuentosController {
             logger.error("Error al consultar progreso del archivo: {}", archivoId, e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al consultar progreso: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/procesados")
+    @Operation(summary = "Consultar descuentos procesados",
+            description = "Obtiene los descuentos procesados filtrados por período y seccional con paginación opcional")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OPERADOR') or hasRole('CONSULTA')")
+    public ResponseEntity<ApiResponse<List<DescuentoProcesadoDTO>>> consultarDescuentosProcesados(
+            @Parameter(description = "Período en formato YYYY/MM", example = "2025/01", required = true)
+            @RequestParam String periodo,
+            @Parameter(description = "ID de la seccional", required = true)
+            @RequestParam Integer seccionalId,
+            @Parameter(description = "Número de página (0-based)")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página")
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Si es true, retorna todos los registros sin paginación")
+            @RequestParam(defaultValue = "false") boolean all) {
+
+        try {
+            logger.info("Consultando descuentos procesados - Período: {}, Seccional: {}, Página: {}, Tamaño: {}, Todo: {}",
+                       periodo, seccionalId, page, size, all);
+
+            List<DescuentoProcesado> descuentos;
+            String mensaje;
+
+            if (all) {
+                // Consultar todos los descuentos sin paginación
+                descuentos = consultaDescuentosService.obtenerTodosDescuentosProcesados(periodo, seccionalId);
+                mensaje = String.format("Se encontraron %d descuentos procesados para período %s y seccional %d",
+                                      descuentos.size(), periodo, seccionalId);
+            } else {
+                // Consultar con paginación
+                org.springframework.data.domain.Pageable pageable =
+                    org.springframework.data.domain.PageRequest.of(page, size);
+
+                org.springframework.data.domain.Page<DescuentoProcesado> descuentosPage =
+                    consultaDescuentosService.obtenerDescuentosProcesados(periodo, seccionalId, pageable);
+
+                descuentos = descuentosPage.getContent();
+                mensaje = String.format("Página %d de %d - %d descuentos de %d totales para período %s y seccional %d",
+                                      page + 1, descuentosPage.getTotalPages(),
+                                      descuentos.size(), descuentosPage.getTotalElements(),
+                                      periodo, seccionalId);
+            }
+
+            // Convertir a DTOs
+            List<DescuentoProcesadoDTO> response = descuentoMapper.toDTOList(descuentos);
+
+            return ResponseEntity.ok(ApiResponse.success(response, mensaje));
+
+        } catch (IllegalArgumentException e) {
+            logger.warn("Parámetros inválidos para consulta de descuentos: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Parámetros inválidos: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error al consultar descuentos procesados - Período: {}, Seccional: {}", periodo, seccionalId, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al consultar descuentos procesados: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/procesados/resumen")
+    @Operation(summary = "Resumen de descuentos procesados",
+            description = "Obtiene un resumen estadístico de los descuentos procesados por período y seccional")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OPERADOR') or hasRole('CONSULTA')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> obtenerResumenDescuentosProcesados(
+            @Parameter(description = "Período en formato YYYY/MM", example = "2025/01", required = true)
+            @RequestParam String periodo,
+            @Parameter(description = "ID de la seccional", required = true)
+            @RequestParam Integer seccionalId) {
+
+        try {
+            logger.info("Generando resumen de descuentos procesados - Período: {}, Seccional: {}", periodo, seccionalId);
+
+            long totalDescuentos = consultaDescuentosService.contarDescuentosProcesados(periodo, seccionalId);
+
+            Map<String, Object> resumen = Map.of(
+                    "periodo", periodo,
+                    "seccional_id", seccionalId,
+                    "total_descuentos", totalDescuentos,
+                    "fecha_consulta", java.time.LocalDateTime.now().toString()
+            );
+
+            String mensaje = String.format("Resumen generado: %d descuentos para período %s y seccional %d",
+                                         totalDescuentos, periodo, seccionalId);
+
+            return ResponseEntity.ok(ApiResponse.success(resumen, mensaje));
+
+        } catch (IllegalArgumentException e) {
+            logger.warn("Parámetros inválidos para resumen de descuentos: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Parámetros inválidos: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error al generar resumen de descuentos - Período: {}, Seccional: {}", periodo, seccionalId, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al generar resumen: " + e.getMessage()));
         }
     }
 

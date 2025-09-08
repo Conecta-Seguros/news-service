@@ -1,5 +1,6 @@
 package conectaseguros.co.news_service.descuentos.infrastructure.output.mapper;
 
+import conectaseguros.co.news_service.descuentos.domain.model.DescuentoProcesado;
 import conectaseguros.co.news_service.descuentos.domain.model.DescuentoValidado;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.entity.DescuentoEntity;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,53 @@ public class DescuentoMapper {
                 entity.getValorEsperado(),
                 entity.getArchivoId()
         );
+    }
+
+    /**
+     * Convierte de entidad a DescuentoProcesado para consultas
+     */
+    public DescuentoProcesado toDescuentoProcesado(DescuentoEntity entity) {
+        if (entity == null) return null;
+
+        return new DescuentoProcesado(
+                entity.getId(),
+                entity.getClienteId(),
+                entity.getSeccionalId(),
+                entity.getAseguradoraId(),
+                entity.getCedulaCliente(),
+                entity.getPeriodo(),
+                entity.getFecha(),
+                entity.getCodigoDescuento(),
+                entity.getCodigoValidacion(),
+                entity.getValor(),
+                entity.getValorEsperado(),
+                entity.getDiferencia(),
+                entity.getEstado(),
+                entity.getArchivoId(),
+                entity.getFechaCreacion()
+        );
+    }
+
+    /**
+     * Convierte lista de entidades a lista de dominio
+     */
+    public List<DescuentoValidado> toDomainList(List<DescuentoEntity> entities) {
+        if (entities == null) return List.of();
+
+        return entities.stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    /**
+     * Convierte lista de entidades a lista de DescuentoProcesado
+     */
+    public List<DescuentoProcesado> toDescuentoProcesadoList(List<DescuentoEntity> entities) {
+        if (entities == null) return null;
+
+        return entities.stream()
+                .map(this::toDescuentoProcesado)
+                .toList();
     }
 
     /**
@@ -85,17 +133,6 @@ public class DescuentoMapper {
         entity.setValor(domain.getValor());
         entity.setValorEsperado(domain.getValorEsperado());
         entity.setEstado(domain.getEstado());
-    }
-
-    /**
-     * Convierte lista de entidades a lista de dominio
-     */
-    public List<DescuentoValidado> toDomainList(List<DescuentoEntity> entities) {
-        if (entities == null) return List.of();
-
-        return entities.stream()
-                .map(this::toDomain)
-                .toList();
     }
 
     /**

@@ -15,6 +15,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,6 +98,64 @@ public class ProductoServiceAdapter implements ProductoService {
         }
     }
 
+    /**
+     * Busca productos activos por cédula del cliente, usando cache si está disponible
+     */
+    public Optional<List<ProductoInfo>> buscarProductosActivosPorClienteCedula(String clienteCedula) {
+        // Para cache usamos hash de la cédula como key
+        Integer cacheKey = clienteCedula.hashCode();
+        List<ProductoInfo> productosEnCache = productosCache.get(cacheKey);
+        if (productosEnCache != null) {
+            logger.debug("✅ Productos de cliente cedula {} encontrados en cache", clienteCedula);
+            return Optional.of(productosEnCache);
+        }
+        try {
+            logger.debug("=== BUSCANDO PRODUCTOS ACTIVOS POR CEDULA CON EUREKA ===");
+            logger.debug("ClienteCedula: {}", clienteCedula);
+            String url = "lb://" + serviceName + "/api/v1/products/productos-cliente/cliente/" + clienteCedula + "/activos";
+            logger.debug("URL con Eureka Discovery: {}", url);
+            String token = getBearerToken();
+            WebClient.RequestHeadersSpec<?> request = webClientBuilder.build()
+                    .get()
+                    .uri(url)
+                    .header("Accept", "application/json")
+                    .header("Content-Type", "application/json")
+                    .header("X-Service-Name", "news-service")
+                    .header("X-Request-Source", "internal");
+            if (token != null) {
+                request = request.header("Authorization", "Bearer " + token);
+            }
+            Map<String, Object> response = request
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .timeout(timeout)
+                    .block();
+            logger.debug("=== RESPONSE DEBUGGING ===");
+            logger.debug("Response Body: {}", response);
+            if (response != null) {
+                Optional<List<ProductoInfo>> productosOpt = parseProductoResponse(response);
+                if (productosOpt.isPresent()) {
+                    productosCache.put(cacheKey, productosOpt.get());
+                    logger.debug("✅ Productos de cliente cedula {} guardados en cache", clienteCedula);
+                }
+                return productosOpt;
+            }
+            logger.debug("❌ Response nulo - productos no encontrados");
+            return Optional.empty();
+        } catch (WebClientResponseException e) {
+            logger.error("Error WebClient {} al buscar productos cliente cedula {}: {}",
+                    e.getStatusCode(), clienteCedula, e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 404) {
+                logger.debug("Productos de cliente cedula {} no encontrados (404)", clienteCedula);
+                return Optional.empty();
+            }
+            throw new ProductoServiceException("Error HTTP: " + e.getStatusCode(), e);
+        } catch (Exception e) {
+            logger.error("Error al buscar productos cliente cedula {}: {}", clienteCedula, e.getMessage(), e);
+            throw new ProductoServiceException("Error de comunicación: " + e.getMessage(), e);
+        }
+    }
+
     @Override
     public ResultadoValidacion validarProductosActivos(Integer clienteId) {
         try {
@@ -122,6 +181,39 @@ public class ProductoServiceAdapter implements ProductoService {
             return ResultadoValidacion.exitoso(productosOpt.get());
         } catch (ProductoServiceException e) {
             logger.error("❌ Error en validación productos activos: {}", e.getMessage());
+            return ResultadoValidacion.conError(
+                    TipoError.ERROR_COMUNICACION_PRODUCTOS,
+                    "Error al validar productos: " + e.getMessage()
+            );
+        }
+    }
+
+    @Override
+    public ResultadoValidacion validarProductosActivosPorCedula(String clienteCedula) {
+        try {
+            logger.debug("=== VALIDANDO PRODUCTOS ACTIVOS POR CEDULA (USANDO CACHE) ===");
+            logger.debug("ClienteCedula: {}", clienteCedula);
+            Integer cacheKey = clienteCedula.hashCode();
+            List<ProductoInfo> productosEnCache = productosCache.get(cacheKey);
+            Optional<List<ProductoInfo>> productosOpt;
+            if (productosEnCache != null) {
+                logger.debug("✅ Usando productos desde cache - evitando segunda llamada HTTP");
+                productosOpt = Optional.of(productosEnCache);
+            } else {
+                logger.debug("⚠️ Productos no en cache, haciendo llamada HTTP");
+                productosOpt = buscarProductosActivosPorClienteCedula(clienteCedula);
+            }
+            if (productosOpt.isEmpty() || productosOpt.get().isEmpty()) {
+                logger.debug("❌ Cliente cedula {} no tiene productos activos", clienteCedula);
+                return ResultadoValidacion.conError(
+                        TipoError.SIN_PRODUCTOS_ACTIVOS,
+                        String.format("Cliente con cédula %s no tiene productos activos", clienteCedula)
+                );
+            }
+            logger.debug("✅ Cliente cedula {} tiene productos activos: {}", clienteCedula, productosOpt.get().size());
+            return ResultadoValidacion.exitoso(productosOpt.get());
+        } catch (ProductoServiceException e) {
+            logger.error("❌ Error en validación productos activos por cédula: {}", e.getMessage());
             return ResultadoValidacion.conError(
                     TipoError.ERROR_COMUNICACION_PRODUCTOS,
                     "Error al validar productos: " + e.getMessage()
@@ -164,31 +256,94 @@ public class ProductoServiceAdapter implements ProductoService {
     }
 
     private ProductoInfo mapToProductoInfo(Map<String, Object> productoMap) {
-        Integer id = productoMap.get("id") instanceof Integer ? (Integer) productoMap.get("id") : null;
-        String codigo = productoMap.get("codigo") instanceof String ? (String) productoMap.get("codigo") : null;
-        String nombre = productoMap.get("nombre") instanceof String ? (String) productoMap.get("nombre") : null;
-        Boolean vigente = productoMap.get("vigente") instanceof Boolean ? (Boolean) productoMap.get("vigente") : true;
-        // Parse valorAnual.value
-        BigDecimal valorAnual = null;
-        if (productoMap.get("valorAnual") instanceof Map valorAnualMap) {
-            Object valueObj = valorAnualMap.get("value");
-            if (valueObj instanceof Number) {
-                valorAnual = BigDecimal.valueOf(((Number) valueObj).doubleValue());
-            } else if (valueObj instanceof String) {
-                valorAnual = new BigDecimal((String) valueObj);
+        try {
+            // Parsear campos obligatorios
+            Integer id = productoMap.get("id") instanceof Number ?
+                ((Number) productoMap.get("id")).intValue() : null;
+
+            Integer polizaId = productoMap.get("polizaId") instanceof Number ?
+                ((Number) productoMap.get("polizaId")).intValue() : null;
+
+            String aseguradoCedula = productoMap.get("aseguradoCedula") instanceof String ?
+                (String) productoMap.get("aseguradoCedula") : null;
+
+            String estado = productoMap.get("estado") instanceof String ?
+                (String) productoMap.get("estado") : null;
+
+            // Parsear fechas
+            LocalDateTime fechaCreacion = parseDateTime(productoMap.get("fechaCreacion"));
+            LocalDateTime fechaCancelacion = parseDateTime(productoMap.get("fechaCancelacion"));
+
+            // Parsear campos de texto opcionales
+            String motivoCancelacion = productoMap.get("motivoCancelacion") instanceof String ?
+                (String) productoMap.get("motivoCancelacion") : null;
+
+            String usuarioCreacion = productoMap.get("usuarioCreacion") instanceof String ?
+                (String) productoMap.get("usuarioCreacion") : null;
+
+            String usuarioModificacion = productoMap.get("usuarioModificacion") instanceof String ?
+                (String) productoMap.get("usuarioModificacion") : null;
+
+            // Parsear valores monetarios - usando los nombres correctos del endpoint
+            BigDecimal valorTotalAnual = parseBigDecimal(productoMap.get("valorTotalAnual"));
+            BigDecimal cuotaMensual = parseBigDecimal(productoMap.get("cuotaMensual"));
+
+            logger.debug("Producto parseado - ID: {}, PolizaID: {}, Cedula: {}, Estado: {}, CuotaMensual: {}",
+                id, polizaId, aseguradoCedula, estado, cuotaMensual);
+
+            return new ProductoInfo(id, polizaId, aseguradoCedula, estado,
+                fechaCreacion, fechaCancelacion, motivoCancelacion,
+                usuarioCreacion, usuarioModificacion,
+                valorTotalAnual, cuotaMensual);
+
+        } catch (Exception e) {
+            logger.error("Error al mapear producto: {} - Datos: {}", e.getMessage(), productoMap);
+            throw new ProductoServiceException("Error al parsear producto: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Parsea un BigDecimal de forma segura desde diferentes tipos de objetos
+     */
+    private BigDecimal parseBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal) {
+            return (BigDecimal) value;
+        }
+        if (value instanceof Number) {
+            return BigDecimal.valueOf(((Number) value).doubleValue());
+        }
+        if (value instanceof String) {
+            try {
+                return new BigDecimal((String) value);
+            } catch (NumberFormatException e) {
+                logger.warn("No se pudo parsear BigDecimal desde String: {}", value);
+                return BigDecimal.ZERO;
             }
         }
-        // Parse valorCuotaMensual.value
-        BigDecimal valorCuotaMensual = null;
-        if (productoMap.get("valorCuotaMensual") instanceof Map valorCuotaMensualMap) {
-            Object valueObj = valorCuotaMensualMap.get("value");
-            if (valueObj instanceof Number) {
-                valorCuotaMensual = BigDecimal.valueOf(((Number) valueObj).doubleValue());
-            } else if (valueObj instanceof String) {
-                valorCuotaMensual = new BigDecimal((String) valueObj);
+        logger.warn("Tipo no soportado para BigDecimal: {} - {}", value.getClass().getSimpleName(), value);
+        return BigDecimal.ZERO;
+    }
+
+    /**
+     * Parsea un LocalDateTime de forma segura desde diferentes tipos de objetos
+     */
+    private LocalDateTime parseDateTime(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            try {
+                return LocalDateTime.parse((String) value);
+            } catch (Exception e) {
+                logger.warn("No se pudo parsear LocalDateTime desde String: {}", value);
+                return null;
             }
         }
-        return new ProductoInfo(id, codigo, nombre, vigente, valorAnual, valorCuotaMensual);
+        logger.warn("Tipo no soportado para LocalDateTime: {} - {}", value.getClass().getSimpleName(), value);
+        return null;
     }
 
     /**
@@ -256,8 +411,52 @@ public class ProductoServiceAdapter implements ProductoService {
     }
 
     @Override
+    public boolean clienteTieneProductosPorCedula(String clienteCedula) {
+        try {
+            String url = "lb://" + serviceName + "/api/v1/products/productos-cliente/cliente/" + clienteCedula + "/activos";
+            logger.debug("HEAD URL por cédula con Eureka Discovery: {}", url);
+            String token = getBearerToken();
+            WebClient.RequestHeadersSpec<?> request = webClientBuilder.build()
+                .head()
+                .uri(url)
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .header("X-Service-Name", "news-service")
+                .header("X-Request-Source", "internal");
+            if (token != null) {
+                request = request.header("Authorization", "Bearer " + token);
+            }
+            request
+                .retrieve()
+                .toBodilessEntity()
+                .timeout(timeout)
+                .block();
+            return true; // Si no lanza excepción, el cliente tiene productos
+        } catch (WebClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                logger.debug("Cliente cédula {} no tiene productos (HEAD 404)", clienteCedula);
+                return false;
+            }
+            if (e.getStatusCode().value() == 503) {
+                logger.error("Servicio de productos no disponible (503) al validar cliente cédula {}.", clienteCedula);
+                throw new ProductoServiceException("Servicio de productos no disponible (503)", e);
+            }
+            logger.error("Error HEAD al validar productos cliente cédula {}: {}", clienteCedula, e.getMessage());
+            throw new ProductoServiceException("Error HEAD: " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Error de comunicación HEAD productos cliente cédula {}: {}", clienteCedula, e.getMessage());
+            throw new ProductoServiceException("Error de comunicación HEAD: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public List<ProductoInfo> obtenerProductosActivos(Integer clienteId) {
         return buscarProductosActivosPorClienteId(clienteId).orElse(List.of());
+    }
+
+    @Override
+    public List<ProductoInfo> obtenerProductosActivosPorCedula(String clienteCedula) {
+        return buscarProductosActivosPorClienteCedula(clienteCedula).orElse(List.of());
     }
 
     /**
