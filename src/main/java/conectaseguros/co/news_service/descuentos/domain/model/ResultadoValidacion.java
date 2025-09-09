@@ -2,6 +2,7 @@ package conectaseguros.co.news_service.descuentos.domain.model;
 
 import conectaseguros.co.news_service.descuentos.domain.model.enums.TipoError;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -10,7 +11,7 @@ public class ResultadoValidacion {
 
     private final boolean valido;
     private final List<ErrorValidacion> errores;
-    private final Object datosAdicionales;
+    private Object datosAdicionales;
 
     private ResultadoValidacion(boolean valido, List<ErrorValidacion> errores, Object datosAdicionales) {
         this.valido = valido;
@@ -36,6 +37,22 @@ public class ResultadoValidacion {
 
     public static ResultadoValidacion conError(TipoError tipoError, String descripcion) {
         return conError(new ErrorValidacion(tipoError, descripcion));
+    }
+
+    /**
+     * Obtiene el valor esperado si fue establecido durante la validación
+     * @return Valor esperado o null si no fue establecido
+     */
+    public BigDecimal getValorEsperado() {
+        return getDatosAdicionales(BigDecimal.class);
+    }
+
+    /**
+     * Establece el valor esperado calculado durante la validación de productos
+     * @param valorEsperado Valor esperado calculado desde el plan de pagos
+     */
+    public void setValorEsperado(BigDecimal valorEsperado) {
+        this.datosAdicionales = valorEsperado;
     }
 
     public boolean esValido() {

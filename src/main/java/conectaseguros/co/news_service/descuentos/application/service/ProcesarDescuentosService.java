@@ -259,11 +259,32 @@ public class ProcesarDescuentosService {
                     // Crear LineaDescuento con el Map y el número de línea
                     LineaDescuento linea = new LineaDescuento(camposPorNombre, i + 1);
 
-                    // Validar línea
-                    ResultadoValidacion resultado = configurarCadenaValidadores().validar(linea, archivo.getSeccionalId());
+                    // ✅ CORRECCIÓN: Validar línea pasando el período del archivo
+                    ResultadoValidacion resultado = configurarCadenaValidadores().validar(linea, archivo.getSeccionalId(), archivo.getPeriodo());
                     logger.debug("Validación de línea {}: {}", i + 1, resultado.esValido() ? "EXITOSA" : "CON ERRORES");
 
                     if (resultado.esValido()) {
+                        // ✅ OBTENER VALOR ESPERADO DESDE EL RESULTADO DE VALIDACIÓN
+                        BigDecimal valorEsperado = resultado.getValorEsperado();
+                        if (valorEsperado == null) {
+                            // Fallback: calcular valor esperado usando el período específico
+                            ClienteService.ClienteInfo clienteInfo = resultado.getDatosAdicionales(ClienteService.ClienteInfo.class);
+                            Integer clienteId = clienteInfo != null ? clienteInfo.getId() : obtenerClienteIdFallback(linea.getCodigoEmpleado());
+
+                            // ✅ CORRECCIÓN: Usar ProductoService en lugar de ValidadorProductos directamente
+                            List<ProductoInfo> productosActivos = validadorProductos.getProductoService().obtenerProductosActivosPorCedula(linea.getCodigoEmpleado());
+                            valorEsperado = productosActivos.stream()
+                                    .map(p -> p.getValorParaPeriodo(archivo.getPeriodo())) // ✅ Usar período específico
+                                    .filter(valor -> valor.compareTo(BigDecimal.ZERO) > 0)
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                            logger.debug("Valor esperado calculado como fallback para cliente {} período {}: {}",
+                                linea.getCodigoEmpleado(), archivo.getPeriodo(), valorEsperado);
+                        } else {
+                            logger.debug("Valor esperado obtenido desde validación para cliente {} período {}: {}",
+                                linea.getCodigoEmpleado(), archivo.getPeriodo(), valorEsperado);
+                        }
+
                         // Generar clave única para el lote
                         String claveUnica = linea.getCodigoEmpleado() + "|" + archivo.getSeccionalId() + "|" + archivo.getPeriodo() + "|" + linea.getCodigoConcepto() + "|" + archivoId;
                         if (clavesUnicasLote.contains(claveUnica)) {
@@ -280,28 +301,22 @@ public class ProcesarDescuentosService {
                             continue;
                         }
                         clavesUnicasLote.add(claveUnica);
+
                         // Verificar duplicados en la base de datos
                         if (!descuentoRepository.existeDescuentoPeriodo(
                                 linea.getCodigoEmpleado(), archivo.getPeriodo(), linea.getCodigoConcepto())) {
                             ClienteService.ClienteInfo clienteInfo = resultado.getDatosAdicionales(ClienteService.ClienteInfo.class);
                             Integer clienteId = clienteInfo != null ? clienteInfo.getId() : obtenerClienteIdFallback(linea.getCodigoEmpleado());
-                            List<ProductoInfo> productosActivos = validadorProductos.obtenerProductosActivos(clienteId);
-                            java.math.BigDecimal valorEsperado = productosActivos.stream()
-                                    .map(p -> p.getValorCuotaMensual() != null ? p.getValorCuotaMensual() : java.math.BigDecimal.ZERO)
-                                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+                            // ✅ CORRECCIÓN: Crear DescuentoValidado con valor esperado correcto
                             DescuentoValidado descuento = DescuentoValidado.fromLineaDescuento(
-                                    linea, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId, valorEsperado, valorEsperado
+                                    linea, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(),
+                                    archivoId, valorEsperado, linea.getValor() // valor del archivo
                             );
-                            if (descuento.getValor().compareTo(valorEsperado) < 0) {
-                                descuento.setEstado("FALTANTE");
-                            } else if (descuento.getValor().compareTo(valorEsperado) > 0) {
-                                descuento.setEstado("EXCEDENTE");
-                            } else {
-                                descuento.setEstado("CONCILIADO");
-                            }
+
                             descuentosLote.add(descuento);
                             procesamiento.registrarLineaProcesada(true);
-                            logger.debug("Línea {} agregada como descuento válido", i + 1);
+                            logger.debug("Línea {} agregada como descuento válido con valor esperado: {}", i + 1, valorEsperado);
                         } else {
                             logger.debug("Línea {} es duplicada en BD para cliente {} en período {}",
                                     i + 1, linea.getCodigoEmpleado(), archivo.getPeriodo());
@@ -518,20 +533,27 @@ public class ProcesarDescuentosService {
                 List<LineaDescuento> grupo = entry.getValue();
                 BigDecimal totalDescuento = grupo.stream().map(LineaDescuento::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
                 LineaDescuento base = grupo.get(0);
-                ResultadoValidacion resultado = cadenaValidadores.validar(base, archivo.getSeccionalId());
+
+                // ✅ CORRECCIÓN: Agregar el parámetro periodo faltante
+                ResultadoValidacion resultado = cadenaValidadores.validar(base, archivo.getSeccionalId(), archivo.getPeriodo());
+
                 if (resultado.esValido()) {
                     if (!descuentoRepository.existeDescuentoPeriodo(
                             base.getCodigoEmpleado(), archivo.getPeriodo(), base.getCodigoConcepto())) {
                         ClienteService.ClienteInfo clienteInfo = resultado.getDatosAdicionales(ClienteService.ClienteInfo.class);
                         Integer clienteId = clienteInfo != null ? clienteInfo.getId() : obtenerClienteIdFallback(base.getCodigoEmpleado());
-                        List<ProductoInfo> productosActivos = validadorProductos.obtenerProductosActivos(clienteId);
+
+                        // ✅ CORRECCIÓN: Usar el método correcto del ProductoService con período específico
+                        List<ProductoInfo> productosActivos = validadorProductos.getProductoService().obtenerProductosActivosPorCedula(base.getCodigoEmpleado());
                         BigDecimal valorEsperado = productosActivos.stream()
-                                .map(p -> p.getValorCuotaMensual() != null ? p.getValorCuotaMensual() : BigDecimal.ZERO)
+                                .map(p -> p.getValorParaPeriodo(archivo.getPeriodo())) // ✅ Usar período específico
+                                .filter(valor -> valor.compareTo(BigDecimal.ZERO) > 0)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
                         DescuentoValidado descuento = DescuentoValidado.fromLineaDescuento(
-                                base, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(), archivoId, valorEsperado, totalDescuento
+                                base, clienteId, archivo.getSeccionalId(), archivo.getPeriodo(),
+                                archivoId, valorEsperado, totalDescuento
                         );
-                        // Ya no es necesario setValor ni lógica de estado aquí
                         descuentosLote.add(descuento);
                     } else {
                         ErrorProcesamiento error = ErrorProcesamiento.deLineaDescuento(

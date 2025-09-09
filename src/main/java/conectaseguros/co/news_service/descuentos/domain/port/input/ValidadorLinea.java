@@ -10,9 +10,10 @@ public interface ValidadorLinea {
      * Valida una línea de descuento
      * @param linea Línea a validar
      * @param seccionalId Seccional que está procesando el archivo
+     * @param periodo Período del archivo en formato YYYY-MM (ej: "2025-06")
      * @return Resultado de la validación
      */
-    ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId);
+    ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId, String periodo);
 
     /**
      * Establece el siguiente validador en la cadena

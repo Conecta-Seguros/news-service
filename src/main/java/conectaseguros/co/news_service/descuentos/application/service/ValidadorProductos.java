@@ -10,7 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @Component
 public class ValidadorProductos implements ValidadorLinea {
@@ -25,9 +25,9 @@ public class ValidadorProductos implements ValidadorLinea {
     }
 
     @Override
-    public ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId) {
-        logger.debug("Validando productos para línea: {} - Cliente: {}",
-                linea.getNumeroLinea(), linea.getCodigoEmpleado());
+    public ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId, String periodo) {
+        logger.debug("Validando productos para línea: {} - Cliente: {} - Período: {}",
+                linea.getNumeroLinea(), linea.getCodigoEmpleado(), periodo);
 
         // Usar directamente la cédula del empleado/cliente desde LineaDescuento
         String clienteCedula = linea.getCodigoEmpleado();
@@ -38,6 +38,15 @@ public class ValidadorProductos implements ValidadorLinea {
             return ResultadoValidacion.conError(
                 TipoError.ERROR_COMUNICACION_PRODUCTOS,
                 "No se pudo obtener la cédula del cliente para la validación de productos"
+            );
+        }
+
+        if (periodo == null || periodo.trim().isEmpty()) {
+            logger.warn("No se pudo obtener período para validar productos en línea: {}",
+                    linea.getNumeroLinea());
+            return ResultadoValidacion.conError(
+                TipoError.ERROR_COMUNICACION_PRODUCTOS,
+                "No se pudo obtener el período para la validación de productos"
             );
         }
 
@@ -71,31 +80,61 @@ public class ValidadorProductos implements ValidadorLinea {
             );
         }
 
-        // Sumar el valor permitido por todos los productos activos (valorCuotaMensual)
-        java.math.BigDecimal valorMaximoDescuento = productosActivos.stream()
-            .map(p -> p.getValorCuotaMensual() != null ? p.getValorCuotaMensual() : java.math.BigDecimal.ZERO)
-            .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        // ✅ CORRECCIÓN: Usar el período específico para calcular el valor máximo permitido
+        BigDecimal valorMaximoDescuento = BigDecimal.ZERO;
+        boolean tieneProductoConPagoValidoParaPeriodo = false;
 
-        // Validar que el valor solicitado en la línea no exceda el valor permitido
-        if (linea.getValor().compareTo(valorMaximoDescuento) > 0) {
-            logger.debug("Descuento solicitado ({}) excede el máximo permitido ({}) para cliente cédula {}",
-                linea.getValor(), valorMaximoDescuento, clienteCedula);
+        for (ProductoInfo producto : productosActivos) {
+            BigDecimal valorParaPeriodo = producto.getValorParaPeriodo(periodo);
+
+            if (valorParaPeriodo.compareTo(BigDecimal.ZERO) > 0) {
+                valorMaximoDescuento = valorMaximoDescuento.add(valorParaPeriodo);
+                tieneProductoConPagoValidoParaPeriodo = true;
+
+                logger.debug("Producto ID: {} tiene valor {} para período {}",
+                    producto.getId(), valorParaPeriodo, periodo);
+            } else {
+                logger.debug("Producto ID: {} no tiene valor válido para período {} (períodos disponibles: {})",
+                    producto.getId(), periodo, producto.getPeriodosDisponibles());
+            }
+        }
+
+        if (!tieneProductoConPagoValidoParaPeriodo) {
+            logger.debug("Cliente cédula {} no tiene productos con pagos válidos para el período {}",
+                clienteCedula, periodo);
             return ResultadoValidacion.conError(
-                TipoError.ERROR_DESCUENTO_EXCEDE_MAXIMO,
-                String.format("El descuento solicitado (%.2f) excede el máximo permitido (%.2f) por los productos activos del cliente con cédula %s",
-                    linea.getValor(), valorMaximoDescuento, clienteCedula)
+                TipoError.SIN_PRODUCTOS_ACTIVOS,
+                String.format("Cliente con cédula %s no tiene productos con pagos válidos para el período %s",
+                    clienteCedula, periodo)
             );
         }
 
-        logger.debug("Descuento solicitado ({}) es válido para cliente cédula {} (máximo permitido: {})",
-            linea.getValor(), clienteCedula, valorMaximoDescuento);
+        // ✅ CORRECCIÓN: NO validar si excede el máximo - permitir descuentos EXCEDENTES
+        // Los descuentos que excedan el valor esperado se marcarán como "EXCEDENTE" en el procesamiento
+        logger.debug("Descuento solicitado ({}) para cliente cédula {} en período {} (valor esperado: {})",
+            linea.getValor(), clienteCedula, periodo, valorMaximoDescuento);
+
+        if (linea.getValor().compareTo(valorMaximoDescuento) > 0) {
+            logger.debug("Descuento solicitado ({}) excede el valor esperado ({}) - se guardará como EXCEDENTE",
+                linea.getValor(), valorMaximoDescuento);
+        } else if (linea.getValor().compareTo(valorMaximoDescuento) < 0) {
+            logger.debug("Descuento solicitado ({}) es menor al valor esperado ({}) - se guardará como FALTANTE",
+                linea.getValor(), valorMaximoDescuento);
+        } else {
+            logger.debug("Descuento solicitado ({}) coincide con el valor esperado ({}) - se guardará como CONCILIADO",
+                linea.getValor(), valorMaximoDescuento);
+        }
+
+        // ✅ IMPORTANTE: Almacenar el valor esperado en el contexto de validación
+        ResultadoValidacion resultado = ResultadoValidacion.exitoso();
+        resultado.setValorEsperado(valorMaximoDescuento);
 
         // Continuar con el siguiente validador
         if (siguiente != null) {
-            return siguiente.validar(linea, seccionalId);
+            return siguiente.validar(linea, seccionalId, periodo);
         }
 
-        return ResultadoValidacion.exitoso();
+        return resultado;
     }
 
     @Override
@@ -105,19 +144,10 @@ public class ValidadorProductos implements ValidadorLinea {
     }
 
     /**
-     * Obtener productos activos por cédula (método actualizado)
-     * @param clienteCedula Cédula del cliente
-     * @return Lista de productos activos
+     * Getter para acceder al ProductoService desde el servicio de procesamiento
+     * @return La instancia de ProductoService
      */
-    public List<ProductoInfo> obtenerProductosActivos(String clienteCedula) {
-        return productoService.obtenerProductosActivosPorCedula(clienteCedula);
-    }
-
-    /**
-     * @deprecated Usar obtenerProductosActivos(String clienteCedula) en su lugar
-     */
-    @Deprecated
-    public List<ProductoInfo> obtenerProductosActivos(Integer clienteId) {
-        return productoService.obtenerProductosActivos(clienteId);
+    public ProductoService getProductoService() {
+        return this.productoService;
     }
 }

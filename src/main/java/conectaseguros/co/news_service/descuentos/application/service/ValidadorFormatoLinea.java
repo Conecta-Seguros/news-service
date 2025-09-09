@@ -16,6 +16,7 @@ import java.util.List;
 public class ValidadorFormatoLinea implements ValidadorLinea {
 
     private static final Logger logger = LoggerFactory.getLogger(ValidadorFormatoLinea.class);
+
     // Nombres de campos obligatorios centralizados
     private static final String CAMPO_TERCERO = "TERCERO";
     private static final String CAMPO_NIT = "NIT";
@@ -26,11 +27,12 @@ public class ValidadorFormatoLinea implements ValidadorLinea {
     private static final String CAMPO_COD_UNIDAD_EJECUTORA = "COD_UNIDAD_EJECUTORA";
     private static final String CAMPO_VALOR = "VALOR";
     private static final String CAMPO_NOMINA = "NOMINA";
+
     private ValidadorLinea siguiente;
 
     @Override
-    public ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId) {
-        logger.debug("Validando formato de línea: {}", linea.getNumeroLinea());
+    public ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId, String periodo) {
+        logger.debug("Validando formato de línea: {} - Período: {}", linea.getNumeroLinea(), periodo);
 
         List<ErrorValidacion> errores = new ArrayList<>();
 
@@ -48,9 +50,12 @@ public class ValidadorFormatoLinea implements ValidadorLinea {
             return ResultadoValidacion.conErrores(errores);
         }
 
+        logger.debug("Formato de línea {} validado correctamente para período {}",
+                linea.getNumeroLinea(), periodo);
+
         // Si no hay errores, continuar con el siguiente validador
         if (siguiente != null) {
-            return siguiente.validar(linea, seccionalId);
+            return siguiente.validar(linea, seccionalId, periodo);
         }
 
         return ResultadoValidacion.exitoso();

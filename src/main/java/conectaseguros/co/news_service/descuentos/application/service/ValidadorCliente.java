@@ -21,9 +21,9 @@ public class ValidadorCliente implements ValidadorLinea {
     }
 
     @Override
-    public ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId) {
-        logger.debug("Validando cliente línea: {} - Cédula: {}",
-                linea.getNumeroLinea(), linea.getCodigoEmpleado());
+    public ResultadoValidacion validar(LineaDescuento linea, Integer seccionalId, String periodo) {
+        logger.debug("Validando cliente línea: {} - Cédula: {} - Período: {}",
+                linea.getNumeroLinea(), linea.getCodigoEmpleado(), periodo);
 
         // Validar que el cliente existe y pertenece a la seccional
         ResultadoValidacion validacionSeccional = clienteService.validarClienteSeccional(
@@ -48,22 +48,15 @@ public class ValidadorCliente implements ValidadorLinea {
             return validacionActivo;
         }
 
-        // Obtener información del cliente para pasarla al siguiente validador
-        ClienteService.ClienteInfo clienteInfo = validacionSeccional.getDatosAdicionales(
-                ClienteService.ClienteInfo.class
-        );
-        if (clienteInfo != null) {
-            linea.setClienteId(clienteInfo.getId());
-        }
-
-        logger.debug("Cliente {} validado correctamente", linea.getCodigoEmpleado());
+        logger.debug("Cliente {} validado correctamente para seccional {} en período {}",
+                linea.getCodigoEmpleado(), seccionalId, periodo);
 
         // Continuar con el siguiente validador
         if (siguiente != null) {
-            return siguiente.validar(linea, seccionalId);
+            return siguiente.validar(linea, seccionalId, periodo);
         }
 
-        return ResultadoValidacion.exitoso(clienteInfo);
+        return ResultadoValidacion.exitoso();
     }
 
     @Override

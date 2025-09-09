@@ -35,10 +35,14 @@ public class ConsultaDescuentosProcesadosService {
 
         validarParametros(periodo, seccionalId);
 
-        Page<DescuentoProcesado> descuentos = consultaRepository.buscarPorPeriodoYSeccional(periodo, seccionalId, pageable);
+        // Convertir formato del período de YYYY/MM a YYYY-MM
+        String periodoNormalizado = normalizarPeriodo(periodo);
+        logger.debug("Período normalizado de {} a {}", periodo, periodoNormalizado);
+
+        Page<DescuentoProcesado> descuentos = consultaRepository.buscarPorPeriodoYSeccional(periodoNormalizado, seccionalId, pageable);
 
         logger.info("Encontrados {} descuentos procesados de {} totales para período {} y seccional {}",
-                   descuentos.getNumberOfElements(), descuentos.getTotalElements(), periodo, seccionalId);
+                   descuentos.getNumberOfElements(), descuentos.getTotalElements(), periodoNormalizado, seccionalId);
 
         return descuentos;
     }
@@ -51,10 +55,14 @@ public class ConsultaDescuentosProcesadosService {
 
         validarParametros(periodo, seccionalId);
 
-        List<DescuentoProcesado> descuentos = consultaRepository.buscarPorPeriodoYSeccional(periodo, seccionalId);
+        // Convertir formato del período de YYYY/MM a YYYY-MM
+        String periodoNormalizado = normalizarPeriodo(periodo);
+        logger.debug("Período normalizado de {} a {}", periodo, periodoNormalizado);
+
+        List<DescuentoProcesado> descuentos = consultaRepository.buscarPorPeriodoYSeccional(periodoNormalizado, seccionalId);
 
         logger.info("Encontrados {} descuentos procesados para período {} y seccional {}",
-                   descuentos.size(), periodo, seccionalId);
+                   descuentos.size(), periodoNormalizado, seccionalId);
 
         return descuentos;
     }
@@ -63,31 +71,61 @@ public class ConsultaDescuentosProcesadosService {
      * Cuenta el total de descuentos procesados por periodo y seccional
      */
     public long contarDescuentosProcesados(String periodo, Integer seccionalId) {
-        logger.debug("Contando descuentos procesados - Período: {}, Seccional: {}", periodo, seccionalId);
+        logger.info("Contando descuentos procesados - Período: {}, Seccional: {}", periodo, seccionalId);
 
         validarParametros(periodo, seccionalId);
 
-        long total = consultaRepository.contarPorPeriodoYSeccional(periodo, seccionalId);
+        // Convertir formato del período de YYYY/MM a YYYY-MM
+        String periodoNormalizado = normalizarPeriodo(periodo);
+        logger.debug("Período normalizado de {} a {}", periodo, periodoNormalizado);
 
-        logger.debug("Total de descuentos procesados: {} para período {} y seccional {}",
-                    total, periodo, seccionalId);
+        long total = consultaRepository.contarPorPeriodoYSeccional(periodoNormalizado, seccionalId);
+
+        logger.info("Total de descuentos procesados: {} para período {} y seccional {}",
+                   total, periodoNormalizado, seccionalId);
 
         return total;
     }
 
+    /**
+     * Normaliza el formato del período de YYYY/MM o YYYY-MM a YYYY-MM (formato de BD)
+     */
+    private String normalizarPeriodo(String periodo) {
+        if (periodo == null) {
+            return null;
+        }
+
+        // Si ya está en formato YYYY-MM, no hacer nada
+        if (periodo.matches("\\d{4}-\\d{2}")) {
+            return periodo;
+        }
+
+        // Si está en formato YYYY/MM, convertir a YYYY-MM
+        if (periodo.matches("\\d{4}/\\d{2}")) {
+            return periodo.replace("/", "-");
+        }
+
+        // Si no coincide con ningún formato esperado, lanzar excepción
+        throw new IllegalArgumentException("Formato de período inválido: " + periodo +
+                                         ". Formatos soportados: YYYY/MM o YYYY-MM");
+    }
+
+    /**
+     * Valida los parámetros de entrada
+     */
     private void validarParametros(String periodo, Integer seccionalId) {
         if (periodo == null || periodo.trim().isEmpty()) {
-            throw new IllegalArgumentException("El período es obligatorio");
+            throw new IllegalArgumentException("El período es requerido");
         }
 
         if (seccionalId == null || seccionalId <= 0) {
-            throw new IllegalArgumentException("El ID de la seccional debe ser un número positivo");
+            throw new IllegalArgumentException("El ID de seccional debe ser un número positivo");
         }
 
-        // Validar formato del período (YYYY/MM)
-        if (!periodo.matches("\\d{4}/\\d{2}")) {
-            throw new IllegalArgumentException("El período debe tener el formato YYYY/MM");
+        // Validar formato básico del período
+        if (!periodo.matches("\\d{4}[/-]\\d{2}")) {
+            throw new IllegalArgumentException("Formato de período inválido: " + periodo +
+                                             ". Formatos soportados: YYYY/MM o YYYY-MM");
         }
     }
 }
-

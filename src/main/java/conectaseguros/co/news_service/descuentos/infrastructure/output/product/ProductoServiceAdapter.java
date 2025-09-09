@@ -256,6 +256,8 @@ public class ProductoServiceAdapter implements ProductoService {
     }
 
     private ProductoInfo mapToProductoInfo(Map<String, Object> productoMap) {
+        logger.debug("Mapeando producto desde datos: {}", productoMap);
+
         try {
             // Parsear campos obligatorios
             Integer id = productoMap.get("id") instanceof Number ?
@@ -284,22 +286,72 @@ public class ProductoServiceAdapter implements ProductoService {
             String usuarioModificacion = productoMap.get("usuarioModificacion") instanceof String ?
                 (String) productoMap.get("usuarioModificacion") : null;
 
-            // Parsear valores monetarios - usando los nombres correctos del endpoint
-            BigDecimal valorTotalAnual = parseBigDecimal(productoMap.get("valorTotalAnual"));
-            BigDecimal cuotaMensual = parseBigDecimal(productoMap.get("cuotaMensual"));
+            // Verificar si tiene la nueva estructura (valorTotalPeriodo y planDePagos)
+            boolean tieneNuevaEstructura = productoMap.containsKey("valorTotalPeriodo") &&
+                                         productoMap.containsKey("planDePagos");
 
-            logger.debug("Producto parseado - ID: {}, PolizaID: {}, Cedula: {}, Estado: {}, CuotaMensual: {}",
-                id, polizaId, aseguradoCedula, estado, cuotaMensual);
+            if (tieneNuevaEstructura) {
+                // Usar la nueva estructura
+                BigDecimal valorTotalPeriodo = parseBigDecimal(productoMap.get("valorTotalPeriodo"));
+                Map<String, BigDecimal> planDePagos = parsePlanDePagos(productoMap.get("planDePagos"));
 
-            return new ProductoInfo(id, polizaId, aseguradoCedula, estado,
-                fechaCreacion, fechaCancelacion, motivoCancelacion,
-                usuarioCreacion, usuarioModificacion,
-                valorTotalAnual, cuotaMensual);
+                logger.debug("Producto parseado (nueva estructura) - ID: {}, PolizaID: {}, Cedula: {}, Estado: {}, ValorTotalPeriodo: {}, PlanPagos: {}",
+                    id, polizaId, aseguradoCedula, estado, valorTotalPeriodo, planDePagos);
+
+                return new ProductoInfo(id, polizaId, aseguradoCedula, estado,
+                    fechaCreacion, fechaCancelacion, motivoCancelacion,
+                    usuarioCreacion, usuarioModificacion,
+                    valorTotalPeriodo, planDePagos);
+            } else {
+                // Usar la estructura anterior para compatibilidad
+                BigDecimal valorTotalAnual = parseBigDecimal(productoMap.get("valorTotalAnual"));
+                BigDecimal cuotaMensual = parseBigDecimal(productoMap.get("cuotaMensual"));
+
+                logger.debug("Producto parseado (estructura anterior) - ID: {}, PolizaID: {}, Cedula: {}, Estado: {}, CuotaMensual: {}",
+                    id, polizaId, aseguradoCedula, estado, cuotaMensual);
+
+                return new ProductoInfo(id, polizaId, aseguradoCedula, estado,
+                    fechaCreacion, fechaCancelacion, motivoCancelacion,
+                    usuarioCreacion, usuarioModificacion,
+                    valorTotalAnual, cuotaMensual);
+            }
 
         } catch (Exception e) {
             logger.error("Error al mapear producto: {} - Datos: {}", e.getMessage(), productoMap);
             throw new ProductoServiceException("Error al parsear producto: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Parsea el plan de pagos desde la respuesta del endpoint
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, BigDecimal> parsePlanDePagos(Object planDePagosObj) {
+        if (planDePagosObj == null) {
+            return Map.of();
+        }
+
+        try {
+            if (planDePagosObj instanceof Map) {
+                Map<String, Object> planMap = (Map<String, Object>) planDePagosObj;
+                Map<String, BigDecimal> resultado = new java.util.HashMap<>();
+
+                for (Map.Entry<String, Object> entry : planMap.entrySet()) {
+                    String periodo = entry.getKey();
+                    BigDecimal valor = parseBigDecimal(entry.getValue());
+                    if (valor.compareTo(BigDecimal.ZERO) > 0) {
+                        resultado.put(periodo, valor);
+                    }
+                }
+
+                logger.debug("Plan de pagos parseado: {}", resultado);
+                return resultado;
+            }
+        } catch (Exception e) {
+            logger.warn("Error al parsear plan de pagos, retornando map vacío: {}", e.getMessage());
+        }
+
+        return Map.of();
     }
 
     /**

@@ -38,14 +38,18 @@ public class DescuentoValidado {
         this.valor = Objects.requireNonNull(valor, "Valor no puede ser null");
         this.valorEsperado = valorEsperado;
         this.diferencia = calcularDiferencia(valor, valorEsperado);
-        // Estado correcto según diferencia
+
+        // ✅ LÓGICA CORREGIDA: Estado según diferencia
         if (this.diferencia.compareTo(BigDecimal.ZERO) == 0) {
             this.estado = "CONCILIADO";
         } else if (this.diferencia.compareTo(BigDecimal.ZERO) > 0) {
-            this.estado = "FALTANTE";
-        } else {
+            // Si diferencia > 0 significa valor > valorEsperado → EXCEDENTE
             this.estado = "EXCEDENTE";
+        } else {
+            // Si diferencia < 0 significa valor < valorEsperado → FALTANTE
+            this.estado = "FALTANTE";
         }
+
         this.archivoId = archivoId;
         this.fechaCreacion = LocalDateTime.now();
     }
