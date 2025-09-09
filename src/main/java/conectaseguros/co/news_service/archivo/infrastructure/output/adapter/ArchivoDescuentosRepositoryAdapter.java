@@ -5,10 +5,12 @@ import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoDescuent
 import conectaseguros.co.news_service.archivo.infrastructure.output.entity.ArchivoDescuentosEntity;
 import conectaseguros.co.news_service.archivo.infrastructure.output.mapper.ArchivoJpaMapper;
 import conectaseguros.co.news_service.archivo.infrastructure.output.repository.JpaArchivoDescuentosRepository;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Optional;
 
 @Component
 public class ArchivoDescuentosRepositoryAdapter implements ArchivoDescuentosRepository {
@@ -49,5 +51,18 @@ public class ArchivoDescuentosRepositoryAdapter implements ArchivoDescuentosRepo
 
         return jpaRepository.findByNombreArchivoAndPeriodo(nombre, periodo)
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public List<ArchivoDescuentos> obtenerTodos() {
+        logger.debug("Obteniendo todos los archivos de descuentos");
+
+        List<ArchivoDescuentosEntity> entities = jpaRepository.findAll();
+
+        logger.debug("Se encontraron {} archivos de descuentos", entities.size());
+
+        return entities.stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

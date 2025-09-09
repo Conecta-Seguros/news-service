@@ -1,12 +1,16 @@
 package conectaseguros.co.news_service.archivo.infrastructure.output.repository;
 
 import conectaseguros.co.news_service.archivo.infrastructure.output.entity.ArchivoNovedadesEntity;
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface JpaArchivoNovedadesRepository extends JpaRepository<ArchivoNovedadesEntity, Long> {
@@ -25,4 +29,22 @@ public interface JpaArchivoNovedadesRepository extends JpaRepository<ArchivoNove
 
     @Query("SELECT COUNT(a) FROM ArchivoNovedadesEntity a WHERE a.periodo = :periodo AND a.estado = 'PROCESANDO'")
     Long countByPeriodoAndEstadoProcesando(@Param("periodo") String periodo);
+
+    // Nuevos métodos para listado con filtros y paginación
+    @Query("SELECT a FROM ArchivoNovedadesEntity a WHERE " +
+           "(:estado IS NULL OR a.estado = :estado) AND " +
+           "(:periodo IS NULL OR a.periodo = :periodo) AND " +
+           "(:seccionalId IS NULL OR a.seccionalId = :seccionalId) AND " +
+           "(:fechaDesde IS NULL OR a.fechaCarga >= :fechaDesde) AND " +
+           "(:fechaHasta IS NULL OR a.fechaCarga <= :fechaHasta)")
+    Page<ArchivoNovedadesEntity> findConFiltros(
+            @Param("estado") String estado,
+            @Param("periodo") String periodo,
+            @Param("seccionalId") Integer seccionalId,
+            @Param("fechaDesde") LocalDateTime fechaDesde,
+            @Param("fechaHasta") LocalDateTime fechaHasta,
+            Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM ArchivoNovedadesEntity a WHERE a.estado = :estado")
+    Long countByEstado(@Param("estado") String estado);
 }

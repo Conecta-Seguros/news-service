@@ -4,6 +4,7 @@ import conectaseguros.co.news_service.archivo.application.mapper.ArchivoMapper;
 import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.archivo.domain.port.input.CargarArchivoUseCase;
 import conectaseguros.co.news_service.archivo.domain.port.input.LeerArchivoUseCase;
+import conectaseguros.co.news_service.archivo.domain.port.input.ListarArchivosDescuentosUseCase;
 import conectaseguros.co.news_service.archivo.infrastructure.input.dto.CargarArchivoRequestDTO;
 import conectaseguros.co.news_service.common.util.ApiResponse;
 import jakarta.validation.Valid;
@@ -27,13 +28,16 @@ public class ArchivoController {
 
     private final CargarArchivoUseCase cargarArchivoUseCase;
     private final LeerArchivoUseCase leerArchivoUseCase;
+    private final ListarArchivosDescuentosUseCase listarArchivosDescuentosUseCase;
     private final ArchivoMapper archivoMapper;
 
     public ArchivoController(CargarArchivoUseCase cargarArchivoUseCase,
                              LeerArchivoUseCase leerArchivoUseCase,
+                             ListarArchivosDescuentosUseCase listarArchivosDescuentosUseCase,
                              ArchivoMapper archivoMapper) {
         this.cargarArchivoUseCase = cargarArchivoUseCase;
         this.leerArchivoUseCase = leerArchivoUseCase;
+        this.listarArchivosDescuentosUseCase = listarArchivosDescuentosUseCase;
         this.archivoMapper = archivoMapper;
     }
 
@@ -177,6 +181,22 @@ public class ArchivoController {
             logger.error("Error al validar archivo: {}", archivo.getOriginalFilename(), e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al validar archivo: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Map<String, Object>>> listarArchivosDescuentos() {
+        try {
+            logger.info("Iniciando listado de archivos de descuentos");
+
+            Map<String, Object> resultado = listarArchivosDescuentosUseCase.listarArchivosDescuentos();
+
+            return ResponseEntity.ok(ApiResponse.success(resultado, "Archivos listados exitosamente"));
+
+        } catch (Exception e) {
+            logger.error("Error al listar archivos de descuentos", e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al listar archivos: " + e.getMessage()));
         }
     }
 
