@@ -22,6 +22,11 @@ public interface ConsultaDescuentosRepository {
     List<DescuentoProcesado> buscarPorPeriodoYSeccional(String periodo, Integer seccionalId);
 
     /**
+     * Busca descuentos por cédula de cliente
+     */
+    List<DescuentoProcesado> buscarPorCedulaCliente(String cedulaCliente);
+
+    /**
      * Cuenta los descuentos por periodo y seccional
      */
     long contarPorPeriodoYSeccional(String periodo, Integer seccionalId);

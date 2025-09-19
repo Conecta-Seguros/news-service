@@ -88,6 +88,24 @@ public class ConsultaDescuentosProcesadosService {
     }
 
     /**
+     * Obtiene todos los descuentos procesados por cédula de cliente
+     */
+    public List<DescuentoProcesado> obtenerDescuentosPorCedula(String cedulaCliente) {
+        logger.info("Consultando descuentos procesados por cédula: {}", cedulaCliente);
+
+        if (cedulaCliente == null || cedulaCliente.trim().isEmpty()) {
+            throw new IllegalArgumentException("La cédula del cliente es requerida");
+        }
+
+        List<DescuentoProcesado> descuentos = consultaRepository.buscarPorCedulaCliente(cedulaCliente);
+
+        logger.info("Encontrados {} descuentos procesados para el cliente con cédula {}",
+                   descuentos.size(), cedulaCliente);
+
+        return descuentos;
+    }
+
+    /**
      * Normaliza el formato del período de YYYY/MM o YYYY-MM a YYYY-MM (formato de BD)
      */
     private String normalizarPeriodo(String periodo) {

@@ -76,4 +76,10 @@ public interface ErrorProcesamientoJpaRepository extends JpaRepository<ErrorProc
     @Query("SELECT COUNT(DISTINCT e.cedulaCliente) FROM ErrorProcesamientoEntity e " +
             "WHERE e.archivoId = :archivoId AND e.cedulaCliente IS NOT NULL")
     long countClientesUnicosConErrores(@Param("archivoId") Long archivoId);
+
+    /**
+     * Obtiene los IDs de archivos únicos que tienen errores
+     */
+    @Query("SELECT DISTINCT e.archivoId FROM ErrorProcesamientoEntity e ORDER BY e.archivoId")
+    List<Long> findDistinctArchivoIdsWithErrors();
 }

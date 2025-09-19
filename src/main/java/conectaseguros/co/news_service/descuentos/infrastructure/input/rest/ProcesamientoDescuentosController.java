@@ -11,10 +11,7 @@ import conectaseguros.co.news_service.descuentos.application.service.ProcesarDes
 import conectaseguros.co.news_service.descuentos.domain.model.DescuentoProcesado;
 import conectaseguros.co.news_service.descuentos.domain.model.ErrorProcesamiento;
 import conectaseguros.co.news_service.descuentos.domain.model.EstadoProcesamiento;
-import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.DescuentoProcesadoDTO;
-import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.ErrorProcesamientoDTO;
-import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.EstadisticasProcesamientoDTO;
-import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.ProcesamientoResponseDTO;
+import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -206,7 +203,7 @@ public class ProcesamientoDescuentosController {
     @Operation(summary = "Consultar descuentos procesados",
             description = "Obtiene los descuentos procesados filtrados por período y seccional con paginación opcional")
     @PreAuthorize("hasRole('ADMIN') or hasRole('OPERADOR') or hasRole('CONSULTA')")
-    public ResponseEntity<ApiResponse<List<DescuentoProcesadoDTO>>> consultarDescuentosProcesados(
+    public ResponseEntity<ApiResponse<Object>> consultarDescuentosProcesados(
             @Parameter(description = "Período en formato YYYY/MM", example = "2025/01", required = true)
             @RequestParam String periodo,
             @Parameter(description = "ID de la seccional", required = true)
@@ -222,14 +219,16 @@ public class ProcesamientoDescuentosController {
             logger.info("Consultando descuentos procesados - Período: {}, Seccional: {}, Página: {}, Tamaño: {}, Todo: {}",
                        periodo, seccionalId, page, size, all);
 
-            List<DescuentoProcesado> descuentos;
-            String mensaje;
-
             if (all) {
                 // Consultar todos los descuentos sin paginación
-                descuentos = consultaDescuentosService.obtenerTodosDescuentosProcesados(periodo, seccionalId);
-                mensaje = String.format("Se encontraron %d descuentos procesados para período %s y seccional %d",
+                List<DescuentoProcesado> descuentos = consultaDescuentosService.obtenerTodosDescuentosProcesados(periodo, seccionalId);
+                String mensaje = String.format("Se encontraron %d descuentos procesados para período %s y seccional %d",
                                       descuentos.size(), periodo, seccionalId);
+                
+                // Convertir a DTOs
+                List<DescuentoProcesadoDTO> response = descuentoMapper.toDTOList(descuentos);
+                
+                return ResponseEntity.ok(ApiResponse.success(response, mensaje));
             } else {
                 // Consultar con paginación
                 org.springframework.data.domain.Pageable pageable =
@@ -238,17 +237,27 @@ public class ProcesamientoDescuentosController {
                 org.springframework.data.domain.Page<DescuentoProcesado> descuentosPage =
                     consultaDescuentosService.obtenerDescuentosProcesados(periodo, seccionalId, pageable);
 
-                descuentos = descuentosPage.getContent();
-                mensaje = String.format("Página %d de %d - %d descuentos de %d totales para período %s y seccional %d",
+                // Convertir a DTOs
+                List<DescuentoProcesadoDTO> data = descuentoMapper.toDTOList(descuentosPage.getContent());
+                
+                // Crear información de paginación
+                PaginationDTO pagination = new PaginationDTO(
+                    page + 1, // currentPage (1-based for frontend)
+                    descuentosPage.getTotalPages(),
+                    size,
+                    descuentosPage.getTotalElements()
+                );
+                
+                // Crear respuesta paginada
+                PaginatedDescuentoProcesadoDTO response = new PaginatedDescuentoProcesadoDTO(data, pagination);
+                
+                String mensaje = String.format("Página %d de %d - %d descuentos de %d totales para período %s y seccional %d",
                                       page + 1, descuentosPage.getTotalPages(),
-                                      descuentos.size(), descuentosPage.getTotalElements(),
+                                      data.size(), descuentosPage.getTotalElements(),
                                       periodo, seccionalId);
+
+                return ResponseEntity.ok(ApiResponse.success(response, mensaje));
             }
-
-            // Convertir a DTOs
-            List<DescuentoProcesadoDTO> response = descuentoMapper.toDTOList(descuentos);
-
-            return ResponseEntity.ok(ApiResponse.success(response, mensaje));
 
         } catch (IllegalArgumentException e) {
             logger.warn("Parámetros inválidos para consulta de descuentos: {}", e.getMessage());
@@ -296,6 +305,70 @@ public class ProcesamientoDescuentosController {
             logger.error("Error al generar resumen de descuentos - Período: {}, Seccional: {}", periodo, seccionalId, e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al generar resumen: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/cliente/{cedula}/procesados")
+    @Operation(summary = "Consultar descuentos procesados por cédula",
+            description = "Obtiene los descuentos procesados para un cliente específico por su cédula")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OPERADOR') or hasRole('CONSULTA')")
+    public ResponseEntity<ApiResponse<List<DescuentoClienteDTO>>> obtenerDescuentosPorCedula(
+            @Parameter(description = "Cédula del cliente", required = true)
+            @PathVariable String cedula) {
+
+        try {
+            logger.info("Consultando descuentos procesados para cliente con cédula: {}", cedula);
+
+            List<DescuentoProcesado> descuentos = consultaDescuentosService.obtenerDescuentosPorCedula(cedula);
+
+            List<DescuentoClienteDTO> response = descuentos.stream()
+                    .map(d -> new DescuentoClienteDTO(
+                            d.getCedulaCliente(),
+                            d.getPeriodo(),
+                            d.getCodigoDescuento(),
+                            d.getValor(),
+                            d.getValorEsperado(),
+                            d.getDiferencia(),
+                            d.getEstado()
+                    ))
+                    .toList();
+
+            String mensaje = String.format("Se encontraron %d descuentos procesados para el cliente con cédula %s",
+                                         response.size(), cedula);
+
+            return ResponseEntity.ok(ApiResponse.success(response, mensaje));
+
+        } catch (IllegalArgumentException e) {
+            logger.warn("Parámetros inválidos para consulta de descuentos por cédula: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Parámetros inválidos: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error al consultar descuentos procesados para cliente con cédula: {}", cedula, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al consultar descuentos procesados: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/archivos/con-errores")
+    @Operation(summary = "Obtener archivos con errores",
+            description = "Lista los archivos que tienen errores registrados")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OPERADOR') or hasRole('CONSULTA')")
+    public ResponseEntity<ApiResponse<List<ArchivoConErroresDTO>>> obtenerArchivosConErrores() {
+        try {
+            logger.debug("Consultando archivos con errores");
+
+            List<ArchivoConErroresDTO> archivos = consultaService.obtenerArchivosConErrores();
+            
+            String mensaje = archivos.size() == 1 ? 
+                "Se encontró 1 archivo con errores" : 
+                String.format("Se encontraron %d archivos con errores", archivos.size());
+
+            return ResponseEntity.ok(ApiResponse.success(archivos, mensaje));
+
+        } catch (Exception e) {
+            logger.error("Error al consultar archivos con errores", e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al consultar archivos con errores: " + e.getMessage()));
         }
     }
 

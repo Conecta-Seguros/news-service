@@ -30,6 +30,11 @@ public interface DescuentoJpaRepository extends JpaRepository<DescuentoEntity, L
             String cedulaCliente, String periodo, String codigoDescuento);
 
     /**
+     * Busca descuentos por cédula de cliente
+     */
+    List<DescuentoEntity> findByCedulaClienteOrderByPeriodoDesc(String cedulaCliente);
+
+    /**
      * Busca descuentos por cédula y período
      */
     List<DescuentoEntity> findByCedulaClienteAndPeriodo(String cedulaCliente, String periodo);

@@ -184,4 +184,19 @@ public class ErrorProcesamientoRepositoryAdapter implements ErrorProcesamientoRe
             throw new RuntimeException("Error al buscar errores por cliente", e);
         }
     }
+
+    @Transactional(readOnly = true)
+    public List<Long> findDistinctArchivoIdsWithErrors() {
+        logger.debug("Buscando IDs de archivos únicos con errores");
+
+        try {
+            List<Long> archivoIds = jpaRepository.findDistinctArchivoIdsWithErrors();
+            logger.debug("Encontrados {} archivos con errores", archivoIds.size());
+            return archivoIds;
+
+        } catch (Exception e) {
+            logger.error("Error al buscar archivos con errores", e);
+            throw new RuntimeException("Error al buscar archivos con errores", e);
+        }
+    }
 }

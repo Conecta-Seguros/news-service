@@ -42,4 +42,10 @@ public interface ErrorProcesamientoRepository {
      * @return Total de errores
      */
     long contarErroresPorArchivo(Long archivoId);
+
+    /**
+     * Busca IDs de archivos únicos que tienen errores
+     * @return Lista de IDs de archivos con errores
+     */
+    List<Long> findDistinctArchivoIdsWithErrors();
 }

@@ -7,6 +7,7 @@ import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoDescuent
 import conectaseguros.co.news_service.descuentos.domain.model.ErrorProcesamiento;
 import conectaseguros.co.news_service.descuentos.domain.model.EstadoProcesamiento;
 import conectaseguros.co.news_service.descuentos.domain.port.output.ErrorProcesamientoRepository;
+import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.ArchivoConErroresDTO;
 import conectaseguros.co.news_service.descuentos.infrastructure.input.dto.EstadisticasProcesamientoDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,5 +183,42 @@ public class ConsultaProcesamientoService {
         // Estimación basada en la fecha de carga
         // En una implementación real, guardarías fecha de inicio y fin del procesamiento
         return Duration.between(archivo.getFechaCarga(), java.time.LocalDateTime.now()).getSeconds();
+    }
+
+    /**
+     * Obtiene la lista de archivos que tienen errores
+     */
+    public List<ArchivoConErroresDTO> obtenerArchivosConErrores() {
+        logger.debug("Consultando archivos con errores");
+        
+        // Obtener los IDs de archivos únicos que tienen errores
+        List<Long> archivoIds = errorRepository.findDistinctArchivoIdsWithErrors();
+        
+        // Para cada archivo, obtener su información y el total de errores
+        return archivoIds.stream()
+                .map(archivoId -> {
+                    // Obtener información del archivo
+                    ArchivoDescuentos archivo = archivoRepository.buscarPorId(archivoId)
+                            .orElse(null);
+                    
+                    if (archivo != null) {
+                        // Contar errores para este archivo
+                        long totalErrores = errorRepository.contarErroresPorArchivo(archivoId);
+                        
+                        // Crear DTO
+                        return new ArchivoConErroresDTO(
+                                archivo.getId(),
+                                archivo.getNombreArchivo(),
+                                archivo.getPeriodo(),
+                                archivo.getSeccionalId(),
+                                totalErrores,
+                                archivo.getEstado() != null ? archivo.getEstado().name() : null
+                        );
+                    }
+                    
+                    return null;
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
     }
 }

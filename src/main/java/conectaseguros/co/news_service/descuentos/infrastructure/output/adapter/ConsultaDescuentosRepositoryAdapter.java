@@ -49,6 +49,15 @@ public class ConsultaDescuentosRepositoryAdapter implements ConsultaDescuentosRe
     }
 
     @Override
+    public List<DescuentoProcesado> buscarPorCedulaCliente(String cedulaCliente) {
+        logger.debug("Buscando descuentos por cédula de cliente: {}", cedulaCliente);
+
+        List<DescuentoEntity> entities = jpaRepository.findByCedulaClienteOrderByPeriodoDesc(cedulaCliente);
+
+        return mapper.toDescuentoProcesadoList(entities);
+    }
+
+    @Override
     public long contarPorPeriodoYSeccional(String periodo, Integer seccionalId) {
         logger.debug("Contando descuentos - Período: {}, Seccional: {}", periodo, seccionalId);
 
