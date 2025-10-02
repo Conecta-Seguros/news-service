@@ -1,6 +1,6 @@
 plugins {
 	java
-	id("org.springframework.boot") version "3.5.3"
+	id("org.springframework.boot") version "3.5.6"
 	id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "8.0.0"
     id("checkstyle")
@@ -10,9 +10,13 @@ val springCloudVersion by extra("2025.0.0")
 group = "conectaseguros.co"
 version = "0.0.1-SNAPSHOT"
 
+springBoot {
+    mainClass.set("conectaseguros.co.news_service.NewsServiceApplication")
+}
+
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(24)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 
@@ -23,7 +27,7 @@ repositories {
 
 dependencyManagement {
 	imports {
-		mavenBom("org.springframework.boot:spring-boot-dependencies:3.5.3")
+		mavenBom("org.springframework.boot:spring-boot-dependencies:3.5.6")
 		mavenBom("org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion")
 	}
 	dependencies {
