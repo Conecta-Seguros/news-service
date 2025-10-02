@@ -2,6 +2,8 @@ plugins {
 	java
 	id("org.springframework.boot") version "3.5.3"
 	id("io.spring.dependency-management") version "1.1.7"
+    id("com.diffplug.spotless") version "8.0.0"
+    id("checkstyle")
 }
 val springCloudVersion by extra("2025.0.0")
 
@@ -25,15 +27,15 @@ dependencyManagement {
 		mavenBom("org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion")
 	}
 	dependencies {
-		dependency("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
+		dependency("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
 		dependency("io.github.cdimascio:dotenv-java:3.2.0")
-		dependency("org.projectlombok:lombok:1.18.38")
+		dependency("org.projectlombok:lombok:1.18.42")
         dependency("org.apache.poi:poi:5.4.1")
         dependency("org.apache.poi:poi-ooxml:5.4.1")
-        dependency("com.opencsv:opencsv:5.12.0")
         dependency("org.apache.poi:poi-scratchpad:5.4.1")
-        dependency("io.projectreactor.netty:reactor-netty-http:1.3.0-M6")
-        dependency("org.apache.httpcomponents.client5:httpclient5:5.5")
+        dependency("com.opencsv:opencsv:5.12.0")
+        dependency("io.projectreactor.netty:reactor-netty-http:1.3.0-M7")
+        dependency("org.apache.httpcomponents.client5:httpclient5:5.5.1")
 	}
 }
 
@@ -92,4 +94,16 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+spotless {
+    java {
+        googleJavaFormat("1.28.0")
+        target("src/**/*.java")
+    }
+}
+
+checkstyle {
+    toolVersion = "11.1.0"
+    configFile = file("config/checkstyle/checkstyle.xml")
 }

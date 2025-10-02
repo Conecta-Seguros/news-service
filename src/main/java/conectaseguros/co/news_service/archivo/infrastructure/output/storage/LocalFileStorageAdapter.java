@@ -23,7 +23,7 @@ public class LocalFileStorageAdapter implements AlmacenadorArchivos {
 
     private final String directorioBase;
 
-    public LocalFileStorageAdapter(@Value("${app.storage.directorio-base:/var/conecta-seguros/archivos}") String directorioBase) {
+    public LocalFileStorageAdapter(@Value("${app.storage.directorio-base:app:/Users/Farid/Documents/conecta-seguros/storage}") String directorioBase) {
         this.directorioBase = directorioBase;
         inicializarDirectorios();
     }
