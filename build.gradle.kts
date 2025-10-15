@@ -38,6 +38,7 @@ dependencyManagement {
         dependency("org.apache.poi:poi-ooxml:5.4.1")
         dependency("org.apache.poi:poi-scratchpad:5.4.1")
         dependency("com.opencsv:opencsv:5.12.0")
+        dependency("org.jetbrains:annotations:26.0.2-1")
         dependency("io.projectreactor.netty:reactor-netty-http:1.3.0-M7")
         dependency("org.apache.httpcomponents.client5:httpclient5:5.5.1")
 	}
