@@ -53,12 +53,14 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
 
 	// Redis Cache
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
 	// Annotations and utilities
 	implementation("org.projectlombok:lombok")
+    implementation("org.jetbrains:annotations")
 
 	// Documentation
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui")
@@ -77,8 +79,14 @@ dependencies {
     // Reactor Netty for reactive HTTP support
     implementation("io.projectreactor.netty:reactor-netty-http")
 
+    // Resilience4j for circuit breaking
+    implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
+
     // Apache HttpClient for HTTP requests
     implementation("org.apache.httpcomponents.client5:httpclient5")
+
+    // Monitoring dependencies
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     // Database
 	runtimeOnly("org.postgresql:postgresql")
