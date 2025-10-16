@@ -41,6 +41,8 @@ dependencyManagement {
         dependency("org.jetbrains:annotations:26.0.2-1")
         dependency("io.projectreactor.netty:reactor-netty-http:1.3.0-M7")
         dependency("org.apache.httpcomponents.client5:httpclient5:5.5.1")
+        dependency("org.flywaydb:flyway-core:11.14.1")
+        dependency("org.flywaydb:flyway-database-postgresql:11.14.1")
 	}
 }
 
@@ -86,14 +88,16 @@ dependencies {
     // Apache HttpClient for HTTP requests
     implementation("org.apache.httpcomponents.client5:httpclient5")
 
-    // Monitoring dependencies
-    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
-
     // Database
-	runtimeOnly("org.postgresql:postgresql")
+    implementation("org.flywaydb:flyway-core")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
 
 	// Development Dependencies
 	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
+
+    // Monitoring dependencies
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
 	// Lombok for compile-time annotation processing
 	compileOnly("org.projectlombok:lombok")
