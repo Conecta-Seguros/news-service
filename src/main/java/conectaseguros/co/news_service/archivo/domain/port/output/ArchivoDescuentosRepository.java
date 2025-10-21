@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ArchivoDescuentosRepository {
-    ArchivoDescuentos guardar(ArchivoDescuentos archivo);
-    Optional<ArchivoDescuentos> buscarPorId(Long id);
-    Optional<ArchivoDescuentos> buscarPorNombreYPeriodo(String nombre, String periodo);
-    List<ArchivoDescuentos> obtenerTodos();
+  ArchivoDescuentos guardar(ArchivoDescuentos archivo);
+
+  Optional<ArchivoDescuentos> buscarPorId(Long id);
+
+  Optional<ArchivoDescuentos> buscarPorNombreYPeriodo(String nombre, String periodo);
+
+  List<ArchivoDescuentos> obtenerTodos();
 }

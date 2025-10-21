@@ -4,55 +4,91 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ClienteResponseDTO {
 
-    @JsonProperty("id")
-    private Integer id;
+  @JsonProperty("id")
+  private Integer id;
 
-    @JsonProperty("cedula")
-    private String cedula;
+  @JsonProperty("cedula")
+  private String cedula;
 
-    @JsonProperty("nombre_completo")
-    private String nombreCompleto;
+  @JsonProperty("nombre_completo")
+  private String nombreCompleto;
 
-    @JsonProperty("seccional_id")
-    private Integer seccionalId;
+  @JsonProperty("seccional_id")
+  private Integer seccionalId;
 
-    @JsonProperty("estado")
-    private String estado;
+  @JsonProperty("estado")
+  private String estado;
 
-    @JsonProperty("fecha_vinculacion")
-    private String fechaVinculacion;
+  @JsonProperty("fecha_vinculacion")
+  private String fechaVinculacion;
 
-    @JsonProperty("activo")
-    private Boolean activo;
+  @JsonProperty("activo")
+  private Boolean activo;
 
-    // Constructores
-    public ClienteResponseDTO() {}
+  // Constructores
+  public ClienteResponseDTO() {}
 
-    // Getters y Setters
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+  // Getters y Setters
+  public Integer getId() {
+    return id;
+  }
 
-    public String getCedula() { return cedula; }
-    public void setCedula(String cedula) { this.cedula = cedula; }
+  public void setId(Integer id) {
+    this.id = id;
+  }
 
-    public String getNombreCompleto() { return nombreCompleto; }
-    public void setNombreCompleto(String nombreCompleto) { this.nombreCompleto = nombreCompleto; }
+  public String getCedula() {
+    return cedula;
+  }
 
-    public Integer getSeccionalId() { return seccionalId; }
-    public void setSeccionalId(Integer seccionalId) { this.seccionalId = seccionalId; }
+  public void setCedula(String cedula) {
+    this.cedula = cedula;
+  }
 
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
+  public String getNombreCompleto() {
+    return nombreCompleto;
+  }
 
-    public String getFechaVinculacion() { return fechaVinculacion; }
-    public void setFechaVinculacion(String fechaVinculacion) { this.fechaVinculacion = fechaVinculacion; }
+  public void setNombreCompleto(String nombreCompleto) {
+    this.nombreCompleto = nombreCompleto;
+  }
 
-    public Boolean getActivo() { return activo; }
-    public void setActivo(Boolean activo) { this.activo = activo; }
+  public Integer getSeccionalId() {
+    return seccionalId;
+  }
 
-    @Override
-    public String toString() {
-        return String.format("ClienteResponseDTO{id=%d, cedula='%s', seccional=%d, activo=%s}",
-                id, cedula, seccionalId, activo);
-    }
+  public void setSeccionalId(Integer seccionalId) {
+    this.seccionalId = seccionalId;
+  }
+
+  public String getEstado() {
+    return estado;
+  }
+
+  public void setEstado(String estado) {
+    this.estado = estado;
+  }
+
+  public String getFechaVinculacion() {
+    return fechaVinculacion;
+  }
+
+  public void setFechaVinculacion(String fechaVinculacion) {
+    this.fechaVinculacion = fechaVinculacion;
+  }
+
+  public Boolean getActivo() {
+    return activo;
+  }
+
+  public void setActivo(Boolean activo) {
+    this.activo = activo;
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "ClienteResponseDTO{id=%d, cedula='%s', seccional=%d, activo=%s}",
+        id, cedula, seccionalId, activo);
+  }
 }

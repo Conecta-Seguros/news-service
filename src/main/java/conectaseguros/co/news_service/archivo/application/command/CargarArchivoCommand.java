@@ -7,19 +7,22 @@ import org.springframework.web.multipart.MultipartFile;
 @Getter
 public class CargarArchivoCommand {
 
-    private final MultipartFile archivo;
-    private final TipoArchivo tipoArchivo;
-    private final String periodo;
-    private final Integer seccionalId;
-    private final Integer usuarioId;
+  private final MultipartFile archivo;
+  private final TipoArchivo tipoArchivo;
+  private final String periodo;
+  private final Integer seccionalId;
+  private final Integer usuarioId;
 
-    public CargarArchivoCommand(MultipartFile archivo, TipoArchivo tipoArchivo,
-                                String periodo, Integer seccionalId, Integer usuarioId) {
-        this.archivo = archivo;
-        this.tipoArchivo = tipoArchivo;
-        this.periodo = periodo;
-        this.seccionalId = seccionalId;
-        this.usuarioId = usuarioId;
-    }
-
+  public CargarArchivoCommand(
+      MultipartFile archivo,
+      TipoArchivo tipoArchivo,
+      String periodo,
+      Integer seccionalId,
+      Integer usuarioId) {
+    this.archivo = archivo;
+    this.tipoArchivo = tipoArchivo;
+    this.periodo = periodo;
+    this.seccionalId = seccionalId;
+    this.usuarioId = usuarioId;
+  }
 }
