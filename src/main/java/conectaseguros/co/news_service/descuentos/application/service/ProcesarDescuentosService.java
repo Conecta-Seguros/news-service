@@ -267,6 +267,17 @@ public class ProcesarDescuentosService {
           // Crear LineaDescuento con el Map y el número de línea
           LineaDescuento linea = new LineaDescuento(camposPorNombre, i + 1);
 
+          // ✅ AGREGAR CLIENTE AL CONJUNTO DE PROCESADOS (independiente de validaciones)
+          // Esto debe ocurrir ANTES de las validaciones para capturar todos los clientes del
+          // archivo
+          if (linea.getCodigoEmpleado() != null && !linea.getCodigoEmpleado().trim().isEmpty()) {
+            clientesArchivoProcesados.add(linea.getCodigoEmpleado());
+            logger.debug(
+                "✅ Cliente {} agregado al conjunto de clientes procesados (línea {})",
+                linea.getCodigoEmpleado(),
+                i + 1);
+          }
+
           // ✅ CORRECCIÓN: Validar línea pasando el período del archivo
           ResultadoValidacion resultado =
               configurarCadenaValidadores()
@@ -369,12 +380,6 @@ public class ProcesarDescuentosService {
 
               descuentosLote.add(descuento);
               procesamiento.registrarLineaProcesada(true);
-
-              // ✅ NUEVA VALIDACIÓN: Recolectar cliente procesado
-              clientesArchivoProcesados.add(linea.getCodigoEmpleado());
-              logger.debug(
-                  "✅ Cliente {} agregado al conjunto de clientes procesados",
-                  linea.getCodigoEmpleado());
 
               logger.debug(
                   "Línea {} agregada como descuento válido con valor esperado: {}",
@@ -577,6 +582,9 @@ public class ProcesarDescuentosService {
       procesamiento.iniciarProcesamiento(totalLineasDatos);
       logger.info("Procesando {} líneas de datos para archivo {}", totalLineasDatos, archivoId);
 
+      // ✅ Crear Set para recolectar clientes procesados del archivo
+      Set<String> clientesArchivoProcesados = new HashSet<>();
+
       // Agrupar descuentos por cliente/concepto/período/seccional/archivo y sumar valores
       Map<String, List<LineaDescuento>> descuentosPorClave = new java.util.HashMap<>();
       List<ErrorProcesamiento> erroresLote = new ArrayList<>();
@@ -628,6 +636,16 @@ public class ProcesarDescuentosService {
             continue;
           }
           LineaDescuento linea = new LineaDescuento(camposPorNombre, i + 1);
+
+          // ✅ AGREGAR CLIENTE AL CONJUNTO DE PROCESADOS (independiente de validaciones)
+          if (linea.getCodigoEmpleado() != null && !linea.getCodigoEmpleado().trim().isEmpty()) {
+            clientesArchivoProcesados.add(linea.getCodigoEmpleado());
+            logger.debug(
+                "✅ Cliente {} agregado al conjunto de clientes procesados (línea {})",
+                linea.getCodigoEmpleado(),
+                i + 1);
+          }
+
           String clave =
               linea.getCodigoEmpleado()
                   + "|"
@@ -728,6 +746,32 @@ public class ProcesarDescuentosService {
 
       // Guardar lote final
       guardarLotes(descuentosLote, erroresLote);
+
+      // ✅ VALIDACIÓN DE CLIENTES FALTANTES (BD → Archivo)
+      logger.info("=== INICIANDO VALIDACIÓN DE CLIENTES FALTANTES (XLSX) ===");
+      logger.info("Clientes procesados del archivo: {}", clientesArchivoProcesados.size());
+
+      try {
+        int clientesFaltantes =
+            validadorClientesFaltantes.validarClientesFaltantes(
+                archivoId,
+                archivo.getSeccionalId(),
+                clientesArchivoProcesados,
+                archivo.getPeriodo());
+
+        logger.info(
+            "✅ Validación de clientes faltantes completada: {} clientes no procesados",
+            clientesFaltantes);
+        procesamiento.agregarClientesFaltantes(clientesFaltantes);
+
+      } catch (Exception e) {
+        logger.error(
+            "⚠️ Error en validación de clientes faltantes (continuando procesamiento): {}",
+            e.getMessage(),
+            e);
+        // NO es error crítico, continuamos con el procesamiento
+      }
+
       procesamiento.completarProcesamiento();
       actualizarEstadoArchivo(archivo, procesamiento);
       return procesamiento.toEstadoProcesamiento();
