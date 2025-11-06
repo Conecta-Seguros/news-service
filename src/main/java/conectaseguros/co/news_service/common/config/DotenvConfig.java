@@ -7,12 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class DotenvConfig {
 
-    @Bean
-    public Dotenv getDotenv() {
-        return Dotenv.configure()
-                .ignoreIfMalformed()
-                .ignoreIfMissing()
-                .load();
-    }
-
+  @Bean
+  public Dotenv getDotenv() {
+    return Dotenv.configure().ignoreIfMalformed().ignoreIfMissing().load();
+  }
 }

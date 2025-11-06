@@ -4,9 +4,10 @@ import java.util.Map;
 
 public interface ListarArchivosDescuentosUseCase {
 
-    /**
-     * Lista todos los archivos de descuentos
-     * @return Mapa con la cantidad y lista de archivos de descuentos
-     */
-    Map<String, Object> listarArchivosDescuentos();
+  /**
+   * Lista todos los archivos de descuentos
+   *
+   * @return Mapa con la cantidad y lista de archivos de descuentos
+   */
+  Map<String, Object> listarArchivosDescuentos();
 }

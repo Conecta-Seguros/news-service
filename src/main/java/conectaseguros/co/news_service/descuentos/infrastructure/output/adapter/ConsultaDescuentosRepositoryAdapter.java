@@ -5,62 +5,68 @@ import conectaseguros.co.news_service.descuentos.domain.port.output.ConsultaDesc
 import conectaseguros.co.news_service.descuentos.infrastructure.output.entity.DescuentoEntity;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.mapper.DescuentoMapper;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.repository.DescuentoJpaRepository;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
-/**
- * Adaptador de repositorio para consultas de descuentos procesados
- */
+/** Adaptador de repositorio para consultas de descuentos procesados */
 @Component
 public class ConsultaDescuentosRepositoryAdapter implements ConsultaDescuentosRepository {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConsultaDescuentosRepositoryAdapter.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(ConsultaDescuentosRepositoryAdapter.class);
 
-    private final DescuentoJpaRepository jpaRepository;
-    private final DescuentoMapper mapper;
+  private final DescuentoJpaRepository jpaRepository;
+  private final DescuentoMapper mapper;
 
-    public ConsultaDescuentosRepositoryAdapter(DescuentoJpaRepository jpaRepository, DescuentoMapper mapper) {
-        this.jpaRepository = jpaRepository;
-        this.mapper = mapper;
-    }
+  public ConsultaDescuentosRepositoryAdapter(
+      DescuentoJpaRepository jpaRepository, DescuentoMapper mapper) {
+    this.jpaRepository = jpaRepository;
+    this.mapper = mapper;
+  }
 
-    @Override
-    public Page<DescuentoProcesado> buscarPorPeriodoYSeccional(String periodo, Integer seccionalId, Pageable pageable) {
-        logger.debug("Buscando descuentos con paginación - Período: {}, Seccional: {}, Página: {}",
-                    periodo, seccionalId, pageable.getPageNumber());
+  @Override
+  public Page<DescuentoProcesado> buscarPorPeriodoYSeccional(
+      String periodo, Integer seccionalId, Pageable pageable) {
+    logger.debug(
+        "Buscando descuentos con paginación - Período: {}, Seccional: {}, Página: {}",
+        periodo,
+        seccionalId,
+        pageable.getPageNumber());
 
-        Page<DescuentoEntity> entitiesPage = jpaRepository.findBySeccionalAndPeriodo(seccionalId, periodo, pageable);
+    Page<DescuentoEntity> entitiesPage =
+        jpaRepository.findBySeccionalAndPeriodo(seccionalId, periodo, pageable);
 
-        return entitiesPage.map(mapper::toDescuentoProcesado);
-    }
+    return entitiesPage.map(mapper::toDescuentoProcesado);
+  }
 
-    @Override
-    public List<DescuentoProcesado> buscarPorPeriodoYSeccional(String periodo, Integer seccionalId) {
-        logger.debug("Buscando todos los descuentos - Período: {}, Seccional: {}", periodo, seccionalId);
+  @Override
+  public List<DescuentoProcesado> buscarPorPeriodoYSeccional(String periodo, Integer seccionalId) {
+    logger.debug(
+        "Buscando todos los descuentos - Período: {}, Seccional: {}", periodo, seccionalId);
 
-        List<DescuentoEntity> entities = jpaRepository.findBySeccionalAndPeriodo(seccionalId, periodo);
+    List<DescuentoEntity> entities = jpaRepository.findBySeccionalAndPeriodo(seccionalId, periodo);
 
-        return mapper.toDescuentoProcesadoList(entities);
-    }
+    return mapper.toDescuentoProcesadoList(entities);
+  }
 
-    @Override
-    public List<DescuentoProcesado> buscarPorCedulaCliente(String cedulaCliente) {
-        logger.debug("Buscando descuentos por cédula de cliente: {}", cedulaCliente);
+  @Override
+  public List<DescuentoProcesado> buscarPorCedulaCliente(String cedulaCliente) {
+    logger.debug("Buscando descuentos por cédula de cliente: {}", cedulaCliente);
 
-        List<DescuentoEntity> entities = jpaRepository.findByCedulaClienteOrderByPeriodoDesc(cedulaCliente);
+    List<DescuentoEntity> entities =
+        jpaRepository.findByCedulaClienteOrderByPeriodoDesc(cedulaCliente);
 
-        return mapper.toDescuentoProcesadoList(entities);
-    }
+    return mapper.toDescuentoProcesadoList(entities);
+  }
 
-    @Override
-    public long contarPorPeriodoYSeccional(String periodo, Integer seccionalId) {
-        logger.debug("Contando descuentos - Período: {}, Seccional: {}", periodo, seccionalId);
+  @Override
+  public long contarPorPeriodoYSeccional(String periodo, Integer seccionalId) {
+    logger.debug("Contando descuentos - Período: {}, Seccional: {}", periodo, seccionalId);
 
-        return jpaRepository.countBySeccionalAndPeriodo(seccionalId, periodo);
-    }
+    return jpaRepository.countBySeccionalAndPeriodo(seccionalId, periodo);
+  }
 }

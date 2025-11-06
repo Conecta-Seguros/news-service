@@ -14,46 +14,43 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class HttpClientConfig {
 
-    /**
-     * RestTemplate básico SIN interceptors para evitar dependencia circular
-     */
-    @Bean("basicRestTemplate")
-    public RestTemplate basicRestTemplate() {
-        return createRestTemplate();
-    }
+  /** RestTemplate básico SIN interceptors para evitar dependencia circular */
+  @Bean("basicRestTemplate")
+  public RestTemplate basicRestTemplate() {
+    return createRestTemplate();
+  }
 
-    /**
-     * RestTemplate principal CON interceptors para autenticación automática
-     */
-    @Bean
-    @Primary
-    public RestTemplate restTemplate() {
-        return createRestTemplate();
-    }
+  /** RestTemplate principal CON interceptors para autenticación automática */
+  @Bean
+  @Primary
+  public RestTemplate restTemplate() {
+    return createRestTemplate();
+  }
 
-    private RestTemplate createRestTemplate() {
-        // ✅ NUEVO: Configurar HttpClient para seguir redirects
-        HttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder
-                .create()
-                .setMaxConnTotal(20)
-                .setMaxConnPerRoute(10)
-                .build();
+  private RestTemplate createRestTemplate() {
+    // ✅ NUEVO: Configurar HttpClient para seguir redirects
+    HttpClientConnectionManager connectionManager =
+        PoolingHttpClientConnectionManagerBuilder.create()
+            .setMaxConnTotal(20)
+            .setMaxConnPerRoute(10)
+            .build();
 
-        CloseableHttpClient httpClient = HttpClients.custom()
-                .setConnectionManager(connectionManager)
-                .setDefaultRequestConfig(
-                        org.apache.hc.client5.http.config.RequestConfig.custom()
-                                .setConnectTimeout(Timeout.ofSeconds(5))
-                                .setResponseTimeout(Timeout.ofSeconds(10))
-                                .setRedirectsEnabled(true)
-                                .setMaxRedirects(3)
-                                .setCircularRedirectsAllowed(false)
-                                .build()
-                )
-                .build();
+    CloseableHttpClient httpClient =
+        HttpClients.custom()
+            .setConnectionManager(connectionManager)
+            .setDefaultRequestConfig(
+                org.apache.hc.client5.http.config.RequestConfig.custom()
+                    .setConnectTimeout(Timeout.ofSeconds(5))
+                    .setResponseTimeout(Timeout.ofSeconds(10))
+                    .setRedirectsEnabled(true)
+                    .setMaxRedirects(3)
+                    .setCircularRedirectsAllowed(false)
+                    .build())
+            .build();
 
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
+    HttpComponentsClientHttpRequestFactory factory =
+        new HttpComponentsClientHttpRequestFactory(httpClient);
 
-        return new RestTemplate(factory);
-    }
+    return new RestTemplate(factory);
+  }
 }

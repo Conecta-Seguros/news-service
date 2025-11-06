@@ -11,22 +11,22 @@ import org.springframework.web.multipart.support.StandardServletMultipartResolve
 @Configuration
 public class FileUploadConfig {
 
-    @Bean
-    public MultipartConfigElement multipartConfigElement() {
-        MultipartConfigFactory factory = new MultipartConfigFactory();
+  @Bean
+  public MultipartConfigElement multipartConfigElement() {
+    MultipartConfigFactory factory = new MultipartConfigFactory();
 
-        // Configurar tamaños máximos
-        factory.setMaxFileSize(DataSize.ofMegabytes(50)); // 50MB por archivo
-        factory.setMaxRequestSize(DataSize.ofMegabytes(60)); // 60MB por request
+    // Configurar tamaños máximos
+    factory.setMaxFileSize(DataSize.ofMegabytes(50)); // 50MB por archivo
+    factory.setMaxRequestSize(DataSize.ofMegabytes(60)); // 60MB por request
 
-        // Directorio temporal
-        factory.setLocation("/tmp");
+    // Directorio temporal
+    factory.setLocation("/tmp");
 
-        return factory.createMultipartConfig();
-    }
+    return factory.createMultipartConfig();
+  }
 
-    @Bean
-    public MultipartResolver multipartResolver() {
-        return new StandardServletMultipartResolver();
-    }
+  @Bean
+  public MultipartResolver multipartResolver() {
+    return new StandardServletMultipartResolver();
+  }
 }
