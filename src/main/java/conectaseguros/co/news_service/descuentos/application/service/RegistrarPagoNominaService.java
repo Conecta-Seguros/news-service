@@ -5,7 +5,7 @@ import conectaseguros.co.news_service.descuentos.domain.port.output.ProductoServ
 import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.PagoNominaRequestDTO;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.PagoResponseDTO;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.PaymentApiResponse;
-import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.PaymentsServiceClient;
+import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.PaymentsServiceAdapter;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.product.ProductoInfo;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,12 +29,12 @@ public class RegistrarPagoNominaService {
 
   private static final Logger logger = LoggerFactory.getLogger(RegistrarPagoNominaService.class);
 
-  private final PaymentsServiceClient paymentsServiceClient;
+  private final PaymentsServiceAdapter paymentsServiceAdapter;
   private final ProductoService productoService;
 
   public RegistrarPagoNominaService(
-      PaymentsServiceClient paymentsServiceClient, ProductoService productoService) {
-    this.paymentsServiceClient = paymentsServiceClient;
+      PaymentsServiceAdapter paymentsServiceAdapter, ProductoService productoService) {
+    this.paymentsServiceAdapter = paymentsServiceAdapter;
     this.productoService = productoService;
   }
 
@@ -187,7 +187,7 @@ public class RegistrarPagoNominaService {
     // 6. Llamar a payments-service para registrar el pago
     try {
       PaymentApiResponse<PagoResponseDTO> response =
-          paymentsServiceClient.registrarPagoNomina(request);
+          paymentsServiceAdapter.registrarPagoNomina(request);
 
       logger.info(
           "✅ Pago registrado exitosamente - ID: {}, Cliente: {}, Periodo: {}",
@@ -210,48 +210,80 @@ public class RegistrarPagoNominaService {
 
   /**
    * Formatea un periodo de formato "YYYYMM" a "YYYY-MM".
+   * Si el periodo ya está en formato "YYYY-MM", lo retorna tal cual.
    *
-   * @param periodo Periodo en formato "YYYYMM" (ej: "202512")
+   * @param periodo Periodo en formato "YYYYMM" (ej: "202512") o "YYYY-MM" (ej: "2025-12")
    * @return Periodo en formato "YYYY-MM" (ej: "2025-12")
    */
   private String formatearPeriodo(String periodo) {
-    if (periodo == null || periodo.length() != 6) {
-      throw new IllegalArgumentException(
-          "Periodo inválido. Debe tener formato YYYYMM: " + periodo);
+    if (periodo == null) {
+      throw new IllegalArgumentException("Periodo no puede ser null");
     }
 
-    String year = periodo.substring(0, 4);
-    String month = periodo.substring(4, 6);
+    // Si ya tiene el formato YYYY-MM (7 caracteres con guion), retornar tal cual
+    if (periodo.length() == 7 && periodo.charAt(4) == '-') {
+      return periodo;
+    }
 
-    return year + "-" + month;
+    // Si tiene formato YYYYMM (6 caracteres), convertir a YYYY-MM
+    if (periodo.length() == 6) {
+      String year = periodo.substring(0, 4);
+      String month = periodo.substring(4, 6);
+      return year + "-" + month;
+    }
+
+    throw new IllegalArgumentException(
+        "Periodo inválido. Debe tener formato YYYYMM o YYYY-MM: " + periodo);
   }
 
   /**
-   * Extrae el año de un periodo en formato "YYYYMM".
+   * Extrae el año de un periodo en formato "YYYYMM" o "YYYY-MM".
    *
-   * @param periodo Periodo en formato "YYYYMM"
+   * @param periodo Periodo en formato "YYYYMM" o "YYYY-MM"
    * @return Año como Integer
    */
   private Integer extraerYear(String periodo) {
-    if (periodo == null || periodo.length() != 6) {
-      throw new IllegalArgumentException(
-          "Periodo inválido. Debe tener formato YYYYMM: " + periodo);
+    if (periodo == null) {
+      throw new IllegalArgumentException("Periodo no puede ser null");
     }
-    return Integer.parseInt(periodo.substring(0, 4));
+
+    // Formato YYYY-MM (7 caracteres)
+    if (periodo.length() == 7 && periodo.charAt(4) == '-') {
+      return Integer.parseInt(periodo.substring(0, 4));
+    }
+
+    // Formato YYYYMM (6 caracteres)
+    if (periodo.length() == 6) {
+      return Integer.parseInt(periodo.substring(0, 4));
+    }
+
+    throw new IllegalArgumentException(
+        "Periodo inválido. Debe tener formato YYYYMM o YYYY-MM: " + periodo);
   }
 
   /**
-   * Extrae el mes de un periodo en formato "YYYYMM".
+   * Extrae el mes de un periodo en formato "YYYYMM" o "YYYY-MM".
    *
-   * @param periodo Periodo en formato "YYYYMM"
+   * @param periodo Periodo en formato "YYYYMM" o "YYYY-MM"
    * @return Mes como Integer
    */
   private Integer extraerMonth(String periodo) {
-    if (periodo == null || periodo.length() != 6) {
-      throw new IllegalArgumentException(
-          "Periodo inválido. Debe tener formato YYYYMM: " + periodo);
+    if (periodo == null) {
+      throw new IllegalArgumentException("Periodo no puede ser null");
     }
-    return Integer.parseInt(periodo.substring(4, 6));
+
+    // Formato YYYY-MM (7 caracteres)
+    if (periodo.length() == 7 && periodo.charAt(4) == '-') {
+      return Integer.parseInt(periodo.substring(5, 7));
+    }
+
+    // Formato YYYYMM (6 caracteres)
+    if (periodo.length() == 6) {
+      return Integer.parseInt(periodo.substring(4, 6));
+    }
+
+    throw new IllegalArgumentException(
+        "Periodo inválido. Debe tener formato YYYYMM o YYYY-MM: " + periodo);
   }
 
   /**
