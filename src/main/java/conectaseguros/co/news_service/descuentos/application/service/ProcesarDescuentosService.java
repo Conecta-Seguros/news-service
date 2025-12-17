@@ -42,6 +42,7 @@ public class ProcesarDescuentosService {
   private final ValidadorCliente validadorCliente;
   private final ValidadorProductos validadorProductos;
   private final ValidadorClientesFaltantes validadorClientesFaltantes;
+  private final RegistrarPagoNominaService registrarPagoNominaService;
 
   @Value("${app.procesamiento.lote-tamano:1000}")
   private int tamanoLote;
@@ -54,7 +55,8 @@ public class ProcesarDescuentosService {
       ValidadorFormatoLinea validadorFormato,
       ValidadorCliente validadorCliente,
       ValidadorProductos validadorProductos,
-      ValidadorClientesFaltantes validadorClientesFaltantes) {
+      ValidadorClientesFaltantes validadorClientesFaltantes,
+      RegistrarPagoNominaService registrarPagoNominaService) {
     this.archivoRepository = archivoRepository;
     this.descuentoRepository = descuentoRepository;
     this.errorRepository = errorRepository;
@@ -63,6 +65,7 @@ public class ProcesarDescuentosService {
     this.validadorCliente = validadorCliente;
     this.validadorProductos = validadorProductos;
     this.validadorClientesFaltantes = validadorClientesFaltantes;
+    this.registrarPagoNominaService = registrarPagoNominaService;
   }
 
   /** Procesa un archivo de descuentos de forma asíncrona */
@@ -487,6 +490,36 @@ public class ProcesarDescuentosService {
         // NO es error crítico, continuamos con el procesamiento
       }
 
+      // ✅ REGISTRAR PAGOS EN PAYMENTS-SERVICE
+      logger.info("=== INICIANDO REGISTRO DE PAGOS EN PAYMENTS-SERVICE ===");
+      try {
+        // Obtener todos los descuentos validados del archivo
+        List<DescuentoValidado> descuentosParaRegistrar =
+            descuentoRepository.buscarPorArchivo(archivoId);
+
+        if (!descuentosParaRegistrar.isEmpty()) {
+          logger.info(
+              "Encontrados {} descuentos validados para registrar como pagos",
+              descuentosParaRegistrar.size());
+
+          // Llamar al servicio de registro de pagos de forma asíncrona
+          registrarPagoNominaService.registrarPagosAsync(descuentosParaRegistrar, archivoId);
+
+          logger.info(
+              "✅ Proceso de registro de pagos iniciado para {} descuentos del archivo {}",
+              descuentosParaRegistrar.size(),
+              archivoId);
+        } else {
+          logger.warn("No se encontraron descuentos validados para registrar como pagos");
+        }
+      } catch (Exception e) {
+        logger.error(
+            "⚠️ Error al iniciar registro de pagos (continuando procesamiento): {}",
+            e.getMessage(),
+            e);
+        // NO es error crítico del procesamiento del archivo, continuamos
+      }
+
       // Completar procesamiento
       procesamiento.completarProcesamiento();
 
@@ -770,6 +803,36 @@ public class ProcesarDescuentosService {
             e.getMessage(),
             e);
         // NO es error crítico, continuamos con el procesamiento
+      }
+
+      // ✅ REGISTRAR PAGOS EN PAYMENTS-SERVICE
+      logger.info("=== INICIANDO REGISTRO DE PAGOS EN PAYMENTS-SERVICE (XLSX) ===");
+      try {
+        // Obtener todos los descuentos validados del archivo
+        List<DescuentoValidado> descuentosParaRegistrar =
+            descuentoRepository.buscarPorArchivo(archivoId);
+
+        if (!descuentosParaRegistrar.isEmpty()) {
+          logger.info(
+              "Encontrados {} descuentos validados para registrar como pagos",
+              descuentosParaRegistrar.size());
+
+          // Llamar al servicio de registro de pagos de forma asíncrona
+          registrarPagoNominaService.registrarPagosAsync(descuentosParaRegistrar, archivoId);
+
+          logger.info(
+              "✅ Proceso de registro de pagos iniciado para {} descuentos del archivo {}",
+              descuentosParaRegistrar.size(),
+              archivoId);
+        } else {
+          logger.warn("No se encontraron descuentos validados para registrar como pagos");
+        }
+      } catch (Exception e) {
+        logger.error(
+            "⚠️ Error al iniciar registro de pagos (continuando procesamiento): {}",
+            e.getMessage(),
+            e);
+        // NO es error crítico del procesamiento del archivo, continuamos
       }
 
       procesamiento.completarProcesamiento();

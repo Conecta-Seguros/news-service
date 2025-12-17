@@ -70,7 +70,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN addgroup -S -g 1001 spring && \
     adduser -S -u 1001 -G spring spring && \
     mkdir -p /app && \
-    chown -R spring:spring /app
+    mkdir -p /var/conecta-seguros/archivos && \
+    chown -R spring:spring /app && \
+    chown -R spring:spring /var/conecta-seguros
 
 WORKDIR /app
 
