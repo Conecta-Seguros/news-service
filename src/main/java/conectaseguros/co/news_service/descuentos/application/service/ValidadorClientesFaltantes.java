@@ -5,14 +5,15 @@ import conectaseguros.co.news_service.descuentos.domain.model.ErrorProcesamiento
 import conectaseguros.co.news_service.descuentos.domain.model.enums.TipoError;
 import conectaseguros.co.news_service.descuentos.domain.port.output.ClienteService;
 import conectaseguros.co.news_service.descuentos.domain.port.output.ErrorProcesamientoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 /**
  * ✅ Validador Global: Verifica que todos los clientes de BD están en el archivo
@@ -135,7 +136,7 @@ public class ValidadorClientesFaltantes {
                 periodo,
                 seccionalId,
                 TipoError.CLIENTE_FALTANTE_EN_ARCHIVO,
-                "Cliente esperado no fue procesado en el archivo",
+                "Cliente esperado no se encuentra en el archivo",
                 null);
 
         // Guardar en BD
