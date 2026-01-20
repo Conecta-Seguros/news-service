@@ -989,6 +989,52 @@ public class ProcesarDescuentosService {
     }
   }
 
+  /** Deshace el procesamiento de un archivo, eliminando descuentos y errores asociados */
+  @Transactional
+  public void deshacerProcesamiento(Long archivoId) {
+    logger.info("=== INICIANDO DESHACER PROCESAMIENTO PARA ARCHIVO {} ===", archivoId);
+
+    // Obtener archivo
+    ArchivoDescuentos archivo =
+        archivoRepository
+            .buscarPorId(archivoId)
+            .orElseThrow(
+                () -> new ArchivoNoEncontradoException("Archivo no encontrado: " + archivoId));
+
+    // Validar estado del archivo
+    if (archivo.getEstado() != EstadoArchivo.PROCESADO
+        && archivo.getEstado() != EstadoArchivo.ERROR
+        && archivo.getEstado() != EstadoArchivo.PROCESANDO) {
+      throw new IllegalStateException(
+          "Solo se puede deshacer el procesamiento de archivos procesados, con errores o en procesamiento");
+    }
+
+    try {
+      // Eliminar descuentos asociados
+      descuentoRepository.eliminarPorArchivo(archivoId);
+      logger.info("Descuentos eliminados para el archivo {}", archivoId);
+
+      // Eliminar errores asociados
+      errorRepository.eliminarPorArchivo(archivoId);
+      logger.info("Errores eliminados para el archivo {}", archivoId);
+
+      // Restablecer estado del archivo
+      archivo.setEstado(EstadoArchivo.CARGADO);
+      archivo.setTotalRegistros(0);
+      archivo.setRegistrosProcesados(0);
+      archivo.setDiferenciasEncontradas(0);
+
+      archivoRepository.guardar(archivo);
+      logger.info("Estado del archivo {} restablecido a CARGADO", archivoId);
+
+      logger.info("=== DESHACER PROCESAMIENTO COMPLETADO PARA ARCHIVO {} ===", archivoId);
+
+    } catch (Exception e) {
+      logger.error("Error al deshacer procesamiento del archivo {}", archivoId, e);
+      throw new RuntimeException("Error al deshacer procesamiento: " + e.getMessage(), e);
+    }
+  }
+
   /**
    * Parsea una línea de texto en campos usando el delimitador CSV (coma por defecto). Si el archivo
    * usa otro delimitador (por ejemplo, punto y coma), ajusta aquí. Maneja comillas para campos con

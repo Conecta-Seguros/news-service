@@ -65,4 +65,7 @@ public interface ErrorProcesamientoJpaRepository
   /** Obtiene los IDs de archivos únicos que tienen errores */
   @Query("SELECT DISTINCT e.archivoId FROM ErrorProcesamientoEntity e ORDER BY e.archivoId")
   List<Long> findDistinctArchivoIdsWithErrors();
+
+  /** Elimina errores por archivo */
+  void deleteByArchivoId(Long archivoId);
 }

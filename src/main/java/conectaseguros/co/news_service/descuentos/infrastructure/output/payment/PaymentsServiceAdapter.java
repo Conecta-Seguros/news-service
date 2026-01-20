@@ -8,9 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-/**
- * Adapter para comunicación con payments-service usando WebClient con Service Discovery.
- */
+/** Adapter para comunicación con payments-service usando WebClient con Service Discovery. */
 @Component
 public class PaymentsServiceAdapter {
 

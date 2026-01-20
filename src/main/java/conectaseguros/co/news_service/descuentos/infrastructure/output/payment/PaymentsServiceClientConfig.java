@@ -12,9 +12,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 @Configuration
 public class PaymentsServiceClientConfig {
 
-  /**
-   * Interceptor para agregar token OAuth2 y headers de servicio interno a las peticiones Feign.
-   */
+  /** Interceptor para agregar token OAuth2 y headers de servicio interno a las peticiones Feign. */
   @Bean
   public RequestInterceptor oauth2FeignRequestInterceptor() {
     return requestTemplate -> {

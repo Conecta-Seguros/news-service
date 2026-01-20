@@ -71,4 +71,7 @@ public interface DescuentoJpaRepository extends JpaRepository<DescuentoEntity, L
         WHERE d.archivoId = :archivoId
         """)
   Object[] getEstadisticasByArchivo(@Param("archivoId") Long archivoId);
+
+  /** Elimina descuentos por archivo */
+  void deleteByArchivoId(Long archivoId);
 }

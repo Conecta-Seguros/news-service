@@ -8,12 +8,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class PaymentsServiceClientFallback implements PaymentsServiceClient {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(PaymentsServiceClientFallback.class);
+  private static final Logger logger = LoggerFactory.getLogger(PaymentsServiceClientFallback.class);
 
   @Override
-  public PaymentApiResponse<PagoResponseDTO> registrarPagoNomina(
-      PagoNominaRequestDTO request) {
+  public PaymentApiResponse<PagoResponseDTO> registrarPagoNomina(PagoNominaRequestDTO request) {
     logger.error(
         "Fallback activado para registrarPagoNomina - payments-service no disponible. Cliente: {}, Periodo: {}-{}",
         request.getClienteId(),

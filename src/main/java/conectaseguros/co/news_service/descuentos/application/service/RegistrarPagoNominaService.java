@@ -8,7 +8,6 @@ import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.P
 import conectaseguros.co.news_service.descuentos.infrastructure.output.payment.PaymentsServiceAdapter;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.product.ProductoInfo;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -117,8 +116,7 @@ public class RegistrarPagoNominaService {
 
     if (productosActivos.isEmpty()) {
       throw new PagoRegistroException(
-          "No se encontraron productos activos para el cliente: "
-              + descuento.getCedulaCliente());
+          "No se encontraron productos activos para el cliente: " + descuento.getCedulaCliente());
     }
 
     // 2. Parsear el periodo (formato "YYYYMM" a "YYYY-MM")
@@ -209,8 +207,8 @@ public class RegistrarPagoNominaService {
   }
 
   /**
-   * Formatea un periodo de formato "YYYYMM" a "YYYY-MM".
-   * Si el periodo ya está en formato "YYYY-MM", lo retorna tal cual.
+   * Formatea un periodo de formato "YYYYMM" a "YYYY-MM". Si el periodo ya está en formato
+   * "YYYY-MM", lo retorna tal cual.
    *
    * @param periodo Periodo en formato "YYYYMM" (ej: "202512") o "YYYY-MM" (ej: "2025-12")
    * @return Periodo en formato "YYYY-MM" (ej: "2025-12")

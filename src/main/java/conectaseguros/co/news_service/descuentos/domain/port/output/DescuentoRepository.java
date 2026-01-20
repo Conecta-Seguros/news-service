@@ -56,4 +56,11 @@ public interface DescuentoRepository {
    * @return Lista de descuentos del cliente en el período
    */
   List<DescuentoValidado> buscarPorClienteYPeriodo(String cedulaCliente, String periodo);
+
+  /**
+   * Elimina los descuentos asociados a un archivo
+   *
+   * @param archivoId ID del archivo
+   */
+  void eliminarPorArchivo(Long archivoId);
 }

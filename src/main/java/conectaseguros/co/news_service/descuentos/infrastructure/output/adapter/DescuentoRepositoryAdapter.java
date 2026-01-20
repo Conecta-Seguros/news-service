@@ -166,4 +166,16 @@ public class DescuentoRepositoryAdapter implements DescuentoRepository {
       return 0;
     }
   }
+
+  @Override
+  public void eliminarPorArchivo(Long archivoId) {
+    logger.debug("Eliminando descuentos del archivo: {}", archivoId);
+    try {
+      jpaRepository.deleteByArchivoId(archivoId);
+      logger.debug("Descuentos eliminados exitosamente para el archivo: {}", archivoId);
+    } catch (Exception e) {
+      logger.error("Error al eliminar descuentos del archivo: {}", archivoId, e);
+      throw new RuntimeException("Error al eliminar descuentos del archivo", e);
+    }
+  }
 }

@@ -197,4 +197,16 @@ public class ErrorProcesamientoRepositoryAdapter implements ErrorProcesamientoRe
       throw new RuntimeException("Error al buscar archivos con errores", e);
     }
   }
+
+  @Override
+  public void eliminarPorArchivo(Long archivoId) {
+    logger.debug("Eliminando errores del archivo: {}", archivoId);
+    try {
+      jpaRepository.deleteByArchivoId(archivoId);
+      logger.debug("Errores eliminados exitosamente para el archivo: {}", archivoId);
+    } catch (Exception e) {
+      logger.error("Error al eliminar errores del archivo: {}", archivoId, e);
+      throw new RuntimeException("Error al eliminar errores del archivo", e);
+    }
+  }
 }

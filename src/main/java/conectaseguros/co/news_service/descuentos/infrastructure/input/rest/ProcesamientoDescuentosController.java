@@ -110,6 +110,36 @@ public class ProcesamientoDescuentosController {
     }
   }
 
+  @DeleteMapping("/archivos/{archivoId}/procesamiento")
+  @Operation(
+      summary = "Deshacer procesamiento de archivo",
+      description =
+          "Elimina todos los descuentos y errores asociados a un archivo y restaura su estado a CARGADO")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<ApiResponse<Void>> deshacerProcesamiento(
+      @Parameter(description = "ID del archivo") @PathVariable Long archivoId) {
+
+    try {
+      logger.info("Solicitud para deshacer procesamiento del archivo: {}", archivoId);
+
+      procesarService.deshacerProcesamiento(archivoId);
+
+      return ResponseEntity.ok(
+          ApiResponse.success(
+              null,
+              "Procesamiento deshecho exitosamente. El archivo ha vuelto a estado CARGADO."));
+
+    } catch (IllegalStateException e) {
+      logger.warn("Estado inválido para deshacer procesamiento: {}", e.getMessage());
+      return ResponseEntity.badRequest()
+          .body(ApiResponse.error("No se puede deshacer el procesamiento: " + e.getMessage()));
+    } catch (Exception e) {
+      logger.error("Error al deshacer procesamiento del archivo: {}", archivoId, e);
+      return ResponseEntity.badRequest()
+          .body(ApiResponse.error("Error al deshacer procesamiento: " + e.getMessage()));
+    }
+  }
+
   @GetMapping("/archivos/{archivoId}/estado")
   @Operation(
       summary = "Consultar estado de procesamiento",

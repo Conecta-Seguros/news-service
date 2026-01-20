@@ -53,4 +53,11 @@ public interface ErrorProcesamientoRepository {
    * @return Lista de IDs de archivos con errores
    */
   List<Long> findDistinctArchivoIdsWithErrors();
+
+  /**
+   * Elimina los errores asociados a un archivo
+   *
+   * @param archivoId ID del archivo
+   */
+  void eliminarPorArchivo(Long archivoId);
 }
