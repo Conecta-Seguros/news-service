@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -187,11 +189,14 @@ public class ArchivoController {
   }
 
   @GetMapping
-  public ResponseEntity<ApiResponse<Map<String, Object>>> listarArchivosDescuentos() {
+  public ResponseEntity<ApiResponse<Map<String, Object>>> listarArchivosDescuentos(
+      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
     try {
-      logger.info("Iniciando listado de archivos de descuentos");
+      logger.info("Iniciando listado de archivos de descuentos: página {}, tamaño {}", page, size);
 
-      Map<String, Object> resultado = listarArchivosDescuentosUseCase.listarArchivosDescuentos();
+      Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+      Map<String, Object> resultado =
+          listarArchivosDescuentosUseCase.listarArchivosDescuentos(pageable);
 
       return ResponseEntity.ok(ApiResponse.success(resultado, "Archivos listados exitosamente"));
 
