@@ -126,8 +126,7 @@ public class ProcesamientoDescuentosController {
 
       return ResponseEntity.ok(
           ApiResponse.success(
-              null,
-              "Procesamiento deshecho exitosamente. El archivo ha vuelto a estado CARGADO."));
+              null, "Procesamiento deshecho exitosamente. El archivo ha vuelto a estado CARGADO."));
 
     } catch (IllegalStateException e) {
       logger.warn("Estado inválido para deshacer procesamiento: {}", e.getMessage());

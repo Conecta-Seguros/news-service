@@ -56,4 +56,13 @@ public interface ProductoService {
    * @return true si el cliente tiene productos, false en caso contrario
    */
   boolean clienteTieneProductosPorCedula(String clienteCedula);
+
+  /**
+   * Limpia el cache interno de productos. Debe llamarse al inicio de cada procesamiento para
+   * garantizar que se consulten datos actualizados del products-service.
+   *
+   * <p>Las implementaciones con cache deben sobreescribir este método; la implementación por
+   * defecto es un no-op.
+   */
+  default void limpiarCache() {}
 }
