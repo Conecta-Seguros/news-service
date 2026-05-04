@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,17 +24,32 @@ public class ListarArchivosDescuentosService implements ListarArchivosDescuentos
   }
 
   @Override
-  public Map<String, Object> listarArchivosDescuentos() {
-    logger.info("Iniciando listado de archivos de descuentos");
+  public Map<String, Object> listarArchivosDescuentos(Pageable pageable) {
+    logger.info(
+        "Iniciando listado de archivos de descuentos: página {}, tamaño {}",
+        pageable.getPageNumber(),
+        pageable.getPageSize());
 
-    List<ArchivoDescuentos> archivos = archivoDescuentosRepository.obtenerTodos();
+    Page<ArchivoDescuentos> page = archivoDescuentosRepository.obtenerTodosPaginado(pageable);
 
     List<Map<String, Object>> archivosDto =
-        archivos.stream().map(this::convertirArchivoAMap).toList();
+        page.getContent().stream().map(this::convertirArchivoAMap).toList();
 
-    logger.info("Se encontraron {} archivos de descuentos", archivos.size());
+    logger.info(
+        "Se encontraron {} archivos de descuentos (total: {})",
+        page.getNumberOfElements(),
+        page.getTotalElements());
 
-    return Map.of("archivos-encontrados", archivos.size(), "archivos", archivosDto);
+    return Map.of(
+        "archivos",
+        archivosDto,
+        "paginacion",
+        Map.of(
+            "pagina", page.getNumber(),
+            "tamano", page.getSize(),
+            "totalElementos", page.getTotalElements(),
+            "totalPaginas", page.getTotalPages(),
+            "ultima", page.isLast()));
   }
 
   private Map<String, Object> convertirArchivoAMap(ArchivoDescuentos archivo) {
