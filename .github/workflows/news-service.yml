@@ -212,10 +212,10 @@ jobs:
             cd /opt/conecta-seguros-backend || { echo "❌ Directory not found"; exit 1; }
             
             echo "🛑 Stop and remove containers..."
-            docker compose --env-file .env-news -f docker-compose-news.yml down
+            docker compose -p news --env-file .env-news -f docker-compose-news.yml down
             
             echo "🚀 Start News Service cluster..."
-            docker compose --env-file .env-news -f docker-compose-news.yml up -d
+            docker compose -p news --env-file .env-news -f docker-compose-news.yml up -d
             
             echo "⏳ Waiting for services to be healthy..."
             sleep 10
