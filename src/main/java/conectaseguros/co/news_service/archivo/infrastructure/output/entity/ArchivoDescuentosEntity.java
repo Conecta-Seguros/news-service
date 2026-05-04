@@ -69,6 +69,37 @@ public class ArchivoDescuentosEntity {
   public ArchivoDescuentosEntity() {}
 
   public ArchivoDescuentosEntity(
+      Long id,
+      String nombreArchivo,
+      String periodo,
+      Integer seccionalId,
+      String estado,
+      Integer totalRegistros,
+      Integer registrosProcesados,
+      Integer diferenciasEncontradas,
+      Integer excedentes,
+      Integer faltantes,
+      Integer noLlegaron,
+      Long tamanoBytes,
+      java.time.LocalDateTime fechaCarga,
+      Integer usuarioCarga) {
+    this.id = id;
+    this.nombreArchivo = nombreArchivo;
+    this.periodo = periodo;
+    this.seccionalId = seccionalId;
+    this.estado = estado;
+    this.totalRegistros = totalRegistros;
+    this.registrosProcesados = registrosProcesados;
+    this.diferenciasEncontradas = diferenciasEncontradas;
+    this.excedentes = excedentes;
+    this.faltantes = faltantes;
+    this.noLlegaron = noLlegaron;
+    this.tamanoBytes = tamanoBytes;
+    this.fechaCarga = fechaCarga;
+    this.usuarioCarga = usuarioCarga;
+  }
+
+  public ArchivoDescuentosEntity(
       String nombreArchivo,
       String periodo,
       Integer seccionalId,
