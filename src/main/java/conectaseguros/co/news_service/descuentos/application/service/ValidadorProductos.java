@@ -148,9 +148,13 @@ public class ValidadorProductos implements ValidadorLinea {
     ResultadoValidacion resultado = ResultadoValidacion.exitoso();
     resultado.setValorEsperado(valorMaximoDescuento);
 
-    // Continuar con el siguiente validador
+    // Continuar con el siguiente validador propagando el valorEsperado ya calculado
     if (siguiente != null) {
-      return siguiente.validar(linea, seccionalId, periodo);
+      ResultadoValidacion resultadoSiguiente = siguiente.validar(linea, seccionalId, periodo);
+      if (resultadoSiguiente.esValido() && resultadoSiguiente.getValorEsperado() == null) {
+        resultadoSiguiente.setValorEsperado(valorMaximoDescuento);
+      }
+      return resultadoSiguiente;
     }
 
     return resultado;

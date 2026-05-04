@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -60,5 +62,22 @@ public class ArchivoDescuentosRepositoryAdapter implements ArchivoDescuentosRepo
     logger.debug("Se encontraron {} archivos de descuentos", entities.size());
 
     return entities.stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
+  public Page<ArchivoDescuentos> obtenerTodosPaginado(Pageable pageable) {
+    logger.debug(
+        "Obteniendo archivos de descuentos paginados: página {}, tamaño {}",
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+
+    Page<ArchivoDescuentosEntity> page = jpaRepository.findAllSinContenido(pageable);
+
+    logger.debug(
+        "Se encontraron {} archivos de descuentos (total: {})",
+        page.getNumberOfElements(),
+        page.getTotalElements());
+
+    return page.map(mapper::toDomain);
   }
 }

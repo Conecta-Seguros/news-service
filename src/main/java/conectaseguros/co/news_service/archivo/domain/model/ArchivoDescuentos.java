@@ -11,7 +11,6 @@ public class ArchivoDescuentos {
   private final String periodo;
   private final Integer seccionalId;
   private final String rutaArchivo;
-  private final byte[] contenido;
   private final MetadatosArchivo metadatos;
   private Long id;
   private Integer totalRegistros;
@@ -28,7 +27,6 @@ public class ArchivoDescuentos {
       String periodo,
       Integer seccionalId,
       String rutaArchivo,
-      byte[] contenido,
       MetadatosArchivo metadatos) {
     this.nombreArchivo = nombreArchivo;
     this.periodo = periodo;
@@ -41,7 +39,6 @@ public class ArchivoDescuentos {
     this.noLlegaron = 0;
     this.estado = EstadoArchivo.CARGADO;
     this.rutaArchivo = rutaArchivo;
-    this.contenido = contenido;
     this.fechaCarga = LocalDateTime.now();
     this.metadatos = metadatos;
   }
@@ -120,10 +117,6 @@ public class ArchivoDescuentos {
 
   public String getRutaArchivo() {
     return rutaArchivo;
-  }
-
-  public byte[] getContenido() {
-    return contenido;
   }
 
   public MetadatosArchivo getMetadatos() {

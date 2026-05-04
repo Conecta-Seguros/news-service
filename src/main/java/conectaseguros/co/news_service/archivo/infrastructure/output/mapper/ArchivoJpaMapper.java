@@ -24,7 +24,6 @@ public class ArchivoJpaMapper {
     entity.setNoLlegaron(domain.getNoLlegaron());
     entity.setEstado(domain.getEstado().getValor());
     entity.setRutaArchivo(domain.getRutaArchivo());
-    entity.setContenido(domain.getContenido());
 
     MetadatosArchivo metadatos = domain.getMetadatos();
     entity.setChecksumSha256(metadatos.checksumSha256());
@@ -52,7 +51,6 @@ public class ArchivoJpaMapper {
             entity.getPeriodo(),
             entity.getSeccionalId(),
             entity.getRutaArchivo(),
-            entity.getContenido(),
             metadatos);
 
     domain.setId(entity.getId());
@@ -86,7 +84,6 @@ public class ArchivoJpaMapper {
     entity.setNoLlegaron(domain.getNoLlegaron());
     entity.setEstado(domain.getEstado().getValor());
     entity.setRutaArchivo(domain.getRutaArchivo());
-    entity.setContenido(domain.getContenido());
 
     MetadatosArchivo metadatos = domain.getMetadatos();
     entity.setChecksumSha256(metadatos.checksumSha256());
@@ -114,7 +111,6 @@ public class ArchivoJpaMapper {
             entity.getPeriodo(),
             entity.getSeccionalId(),
             entity.getRutaArchivo(),
-            entity.getContenido(),
             metadatos);
 
     domain.setId(entity.getId());

@@ -8,7 +8,6 @@ public class ArchivoNovedades {
   private final String periodo;
   private final Integer seccionalId;
   private final String rutaArchivo;
-  private final byte[] contenido;
   private final MetadatosArchivo metadatos;
   private Long id;
   private Integer totalRegistros;
@@ -24,7 +23,6 @@ public class ArchivoNovedades {
       String periodo,
       Integer seccionalId,
       String rutaArchivo,
-      byte[] contenido,
       MetadatosArchivo metadatos) {
     this.nombreArchivo = nombreArchivo;
     this.periodo = periodo;
@@ -37,7 +35,6 @@ public class ArchivoNovedades {
     this.noLlegaron = 0;
     this.estado = EstadoArchivo.PROCESANDO;
     this.rutaArchivo = rutaArchivo;
-    this.contenido = contenido;
     this.metadatos = metadatos;
   }
 
@@ -115,10 +112,6 @@ public class ArchivoNovedades {
 
   public String getRutaArchivo() {
     return rutaArchivo;
-  }
-
-  public byte[] getContenido() {
-    return contenido;
   }
 
   public MetadatosArchivo getMetadatos() {

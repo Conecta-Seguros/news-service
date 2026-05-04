@@ -91,7 +91,6 @@ public class CargarArchivoService implements CargarArchivoUseCase {
               periodo,
               seccionalId,
               rutaArchivo,
-              contenido,
               metadatos);
 
       logger.info("Archivo cargado exitosamente con ID: {}", archivoId);
@@ -152,21 +151,18 @@ public class CargarArchivoService implements CargarArchivoUseCase {
       String periodo,
       Integer seccionalId,
       String rutaArchivo,
-      byte[] contenido,
       MetadatosArchivo metadatos) {
 
     switch (tipoArchivo) {
       case NOVEDADES:
         ArchivoNovedades archivoNovedades =
-            new ArchivoNovedades(
-                nombreArchivo, periodo, seccionalId, rutaArchivo, contenido, metadatos);
+            new ArchivoNovedades(nombreArchivo, periodo, seccionalId, rutaArchivo, metadatos);
         ArchivoNovedades savedNovedades = archivoNovedadesRepository.guardar(archivoNovedades);
         return savedNovedades.getId();
 
       case DESCUENTOS:
         ArchivoDescuentos archivoDescuentos =
-            new ArchivoDescuentos(
-                nombreArchivo, periodo, seccionalId, rutaArchivo, contenido, metadatos);
+            new ArchivoDescuentos(nombreArchivo, periodo, seccionalId, rutaArchivo, metadatos);
         ArchivoDescuentos savedDescuentos = archivoDescuentosRepository.guardar(archivoDescuentos);
         return savedDescuentos.getId();
 

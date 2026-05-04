@@ -28,8 +28,9 @@ public class ProductoServiceAdapter implements ProductoService {
   private final WebClient.Builder webClientBuilder;
   private final String serviceName;
   private final Duration timeout;
-  // ✅ Cache para evitar múltiples llamadas al mismo cliente
-  private final Map<Integer, List<ProductoInfo>> productosCache = new ConcurrentHashMap<>();
+  // Cache por clienteId (Integer) y por cédula (String) — separados para evitar colisiones de clave
+  private final Map<Integer, List<ProductoInfo>> productosCachePorId = new ConcurrentHashMap<>();
+  private final Map<String, List<ProductoInfo>> productosCachePorCedula = new ConcurrentHashMap<>();
 
   public ProductoServiceAdapter(
       WebClient.Builder webClientBuilder,
@@ -44,7 +45,7 @@ public class ProductoServiceAdapter implements ProductoService {
 
   /** Busca productos activos por clienteId, usando cache si está disponible */
   public Optional<List<ProductoInfo>> buscarProductosActivosPorClienteId(Integer clienteId) {
-    List<ProductoInfo> productosEnCache = productosCache.get(clienteId);
+    List<ProductoInfo> productosEnCache = productosCachePorId.get(clienteId);
     if (productosEnCache != null) {
       logger.debug("✅ Productos de cliente {} encontrados en cache", clienteId);
       return Optional.of(productosEnCache);
@@ -83,7 +84,7 @@ public class ProductoServiceAdapter implements ProductoService {
       if (response != null) {
         Optional<List<ProductoInfo>> productosOpt = parseProductoResponse(response);
         if (productosOpt.isPresent()) {
-          productosCache.put(clienteId, productosOpt.get());
+          productosCachePorId.put(clienteId, productosOpt.get());
           logger.debug("✅ Productos de cliente {} guardados en cache", clienteId);
         }
         return productosOpt;
@@ -109,9 +110,7 @@ public class ProductoServiceAdapter implements ProductoService {
 
   /** Busca productos activos por cédula del cliente, usando cache si está disponible */
   public Optional<List<ProductoInfo>> buscarProductosActivosPorClienteCedula(String clienteCedula) {
-    // Para cache usamos hash de la cédula como key
-    Integer cacheKey = clienteCedula.hashCode();
-    List<ProductoInfo> productosEnCache = productosCache.get(cacheKey);
+    List<ProductoInfo> productosEnCache = productosCachePorCedula.get(clienteCedula);
     if (productosEnCache != null) {
       logger.debug("✅ Productos de cliente cedula {} encontrados en cache", clienteCedula);
       return Optional.of(productosEnCache);
@@ -150,7 +149,7 @@ public class ProductoServiceAdapter implements ProductoService {
       if (response != null) {
         Optional<List<ProductoInfo>> productosOpt = parseProductoResponse(response);
         if (productosOpt.isPresent()) {
-          productosCache.put(cacheKey, productosOpt.get());
+          productosCachePorCedula.put(clienteCedula, productosOpt.get());
           logger.debug("✅ Productos de cliente cedula {} guardados en cache", clienteCedula);
         }
         return productosOpt;
@@ -180,7 +179,7 @@ public class ProductoServiceAdapter implements ProductoService {
     try {
       logger.debug("=== VALIDANDO PRODUCTOS ACTIVOS (USANDO CACHE) ===");
       logger.debug("ClienteId: {}", clienteId);
-      List<ProductoInfo> productosEnCache = productosCache.get(clienteId);
+      List<ProductoInfo> productosEnCache = productosCachePorId.get(clienteId);
       Optional<List<ProductoInfo>> productosOpt;
       if (productosEnCache != null) {
         logger.debug("✅ Usando productos desde cache - evitando segunda llamada HTTP");
@@ -210,8 +209,7 @@ public class ProductoServiceAdapter implements ProductoService {
     try {
       logger.debug("=== VALIDANDO PRODUCTOS ACTIVOS POR CEDULA (USANDO CACHE) ===");
       logger.debug("ClienteCedula: {}", clienteCedula);
-      Integer cacheKey = clienteCedula.hashCode();
-      List<ProductoInfo> productosEnCache = productosCache.get(cacheKey);
+      List<ProductoInfo> productosEnCache = productosCachePorCedula.get(clienteCedula);
       Optional<List<ProductoInfo>> productosOpt;
       if (productosEnCache != null) {
         logger.debug("✅ Usando productos desde cache - evitando segunda llamada HTTP");
@@ -240,7 +238,8 @@ public class ProductoServiceAdapter implements ProductoService {
 
   /** Limpiar cache (útil para testing o cuando sea necesario) */
   public void limpiarCache() {
-    productosCache.clear();
+    productosCachePorId.clear();
+    productosCachePorCedula.clear();
     logger.debug("✅ Cache de productos limpiado");
   }
 

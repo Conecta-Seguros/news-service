@@ -6,6 +6,7 @@ import conectaseguros.co.news_service.archivo.domain.model.ArchivoDescuentos;
 import conectaseguros.co.news_service.archivo.domain.model.ArchivoNovedades;
 import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.archivo.domain.port.input.LeerArchivoUseCase;
+import conectaseguros.co.news_service.archivo.domain.port.output.AlmacenadorArchivos;
 import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoDescuentosRepository;
 import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoNovedadesRepository;
 import java.io.BufferedReader;
@@ -29,12 +30,15 @@ public class LeerArchivoService implements LeerArchivoUseCase {
 
   private final ArchivoNovedadesRepository archivoNovedadesRepository;
   private final ArchivoDescuentosRepository archivoDescuentosRepository;
+  private final AlmacenadorArchivos almacenadorArchivos;
 
   public LeerArchivoService(
       ArchivoNovedadesRepository archivoNovedadesRepository,
-      ArchivoDescuentosRepository archivoDescuentosRepository) {
+      ArchivoDescuentosRepository archivoDescuentosRepository,
+      AlmacenadorArchivos almacenadorArchivos) {
     this.archivoNovedadesRepository = archivoNovedadesRepository;
     this.archivoDescuentosRepository = archivoDescuentosRepository;
+    this.almacenadorArchivos = almacenadorArchivos;
   }
 
   @Override
@@ -102,7 +106,7 @@ public class LeerArchivoService implements LeerArchivoUseCase {
                     () ->
                         new ArchivoNoEncontradoException(
                             "Archivo de novedades no encontrado con ID: " + archivoId));
-        return archivoNovedades.getContenido();
+        return almacenadorArchivos.recuperar(archivoNovedades.getRutaArchivo());
 
       case DESCUENTOS:
         ArchivoDescuentos archivoDescuentos =
@@ -112,7 +116,7 @@ public class LeerArchivoService implements LeerArchivoUseCase {
                     () ->
                         new ArchivoNoEncontradoException(
                             "Archivo de descuentos no encontrado con ID: " + archivoId));
-        return archivoDescuentos.getContenido();
+        return almacenadorArchivos.recuperar(archivoDescuentos.getRutaArchivo());
 
       default:
         throw new ArchivoNoValidoException("Tipo de archivo no soportado: " + tipoArchivo);

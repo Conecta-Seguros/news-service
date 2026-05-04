@@ -4,6 +4,7 @@ import conectaseguros.co.news_service.archivo.domain.exceptions.ArchivoNoEncontr
 import conectaseguros.co.news_service.archivo.domain.model.ArchivoDescuentos;
 import conectaseguros.co.news_service.archivo.domain.model.enums.EstadoArchivo;
 import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
+import conectaseguros.co.news_service.archivo.domain.port.output.AlmacenadorArchivos;
 import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoDescuentosRepository;
 import conectaseguros.co.news_service.descuentos.domain.model.*;
 import conectaseguros.co.news_service.descuentos.domain.model.enums.TipoError;
@@ -43,6 +44,7 @@ public class ProcesarDescuentosService {
   private final ValidadorProductos validadorProductos;
   private final ValidadorClientesFaltantes validadorClientesFaltantes;
   private final RegistrarPagoNominaService registrarPagoNominaService;
+  private final AlmacenadorArchivos almacenadorArchivos;
 
   @Value("${app.procesamiento.lote-tamano:1000}")
   private int tamanoLote;
@@ -56,7 +58,8 @@ public class ProcesarDescuentosService {
       ValidadorCliente validadorCliente,
       ValidadorProductos validadorProductos,
       ValidadorClientesFaltantes validadorClientesFaltantes,
-      RegistrarPagoNominaService registrarPagoNominaService) {
+      RegistrarPagoNominaService registrarPagoNominaService,
+      AlmacenadorArchivos almacenadorArchivos) {
     this.archivoRepository = archivoRepository;
     this.descuentoRepository = descuentoRepository;
     this.errorRepository = errorRepository;
@@ -66,6 +69,7 @@ public class ProcesarDescuentosService {
     this.validadorProductos = validadorProductos;
     this.validadorClientesFaltantes = validadorClientesFaltantes;
     this.registrarPagoNominaService = registrarPagoNominaService;
+    this.almacenadorArchivos = almacenadorArchivos;
   }
 
   /** Procesa un archivo de descuentos de forma asíncrona */
@@ -140,6 +144,11 @@ public class ProcesarDescuentosService {
   public EstadoProcesamiento procesarArchivoSincrono(Long archivoId) {
     logger.info("=== INICIANDO PROCESAMIENTO SÍNCRONO DE ARCHIVO {} ===", archivoId);
 
+    // Limpiar cache de productos para garantizar datos actualizados del products-service
+    validadorProductos.getProductoService().limpiarCache();
+    logger.debug(
+        "Cache de productos limpiado al inicio del procesamiento del archivo {}", archivoId);
+
     // Obtener archivo
     ArchivoDescuentos archivo =
         archivoRepository
@@ -169,7 +178,8 @@ public class ProcesarDescuentosService {
       logger.info("Cadena de validadores configurada para archivo: {}", archivoId);
 
       // Convertir contenido a líneas
-      String contenidoTexto = new String(archivo.getContenido());
+      byte[] contenido = almacenadorArchivos.recuperar(archivo.getRutaArchivo());
+      String contenidoTexto = new String(contenido, java.nio.charset.StandardCharsets.UTF_8);
       List<String> lineas = obtenerLineasArchivo(contenidoTexto);
       logger.info("Archivo {} contiene {} líneas totales", archivoId, lineas.size());
 
@@ -555,6 +565,11 @@ public class ProcesarDescuentosService {
    */
   public EstadoProcesamiento procesarArchivoDesdeFilas(Long archivoId, List<String[]> filas) {
     logger.info("=== INICIANDO PROCESAMIENTO DESDE FILAS PARA ARCHIVO {} ===", archivoId);
+
+    // Limpiar cache de productos para garantizar datos actualizados del products-service
+    validadorProductos.getProductoService().limpiarCache();
+    logger.debug(
+        "Cache de productos limpiado al inicio del procesamiento del archivo {}", archivoId);
 
     ArchivoDescuentos archivo =
         archivoRepository
