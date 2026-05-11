@@ -1,8 +1,6 @@
 package conectaseguros.co.news_service.descuentos.infrastructure.input.rest;
 
-import conectaseguros.co.news_service.archivo.application.service.LeerArchivoService;
 import conectaseguros.co.news_service.archivo.domain.model.enums.EstadoArchivo;
-import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.common.util.ApiResponse;
 import conectaseguros.co.news_service.descuentos.application.mapper.DescuentoProcesadoMapper;
 import conectaseguros.co.news_service.descuentos.application.service.ConsultaDescuentosProcesadosService;
@@ -35,19 +33,16 @@ public class ProcesamientoDescuentosController {
 
   private final ProcesarDescuentosService procesarService;
   private final ConsultaProcesamientoService consultaService;
-  private final LeerArchivoService leerArchivoService;
   private final ConsultaDescuentosProcesadosService consultaDescuentosService;
   private final DescuentoProcesadoMapper descuentoMapper;
 
   public ProcesamientoDescuentosController(
       ProcesarDescuentosService procesarService,
       ConsultaProcesamientoService consultaService,
-      LeerArchivoService leerArchivoService,
       ConsultaDescuentosProcesadosService consultaDescuentosService,
       DescuentoProcesadoMapper descuentoMapper) {
     this.procesarService = procesarService;
     this.consultaService = consultaService;
-    this.leerArchivoService = leerArchivoService;
     this.consultaDescuentosService = consultaDescuentosService;
     this.descuentoMapper = descuentoMapper;
   }
@@ -78,27 +73,11 @@ public class ProcesamientoDescuentosController {
         return ResponseEntity.badRequest().body(ApiResponse.error("El archivo ya fue procesado"));
       }
 
-      // Obtener nombre y tipo de archivo
-      String nombreArchivo =
-          leerArchivoService.obtenerNombreArchivo(archivoId, TipoArchivo.DESCUENTOS);
-      String extension =
-          nombreArchivo != null && nombreArchivo.contains(".")
-              ? nombreArchivo.substring(nombreArchivo.lastIndexOf(".") + 1).toLowerCase()
-              : "";
+      // Lanzar procesamiento asíncrono y retornar 202 inmediatamente
+      procesarService.procesarArchivo(archivoId);
 
-      // Leer archivo como filas
-      List<String[]> filas =
-          leerArchivoService.leerArchivoDesdeBytes(
-              leerArchivoService.obtenerContenidoArchivo(archivoId, TipoArchivo.DESCUENTOS),
-              nombreArchivo);
-
-      // Procesar archivo nativamente desde filas
-      EstadoProcesamiento estadoProcesamiento =
-          procesarService.procesarArchivoDesdeFilas(archivoId, filas);
-
-      ProcesamientoResponseDTO response =
-          new ProcesamientoResponseDTO(archivoId, estadoProcesamiento);
-      logger.info("Procesamiento iniciado exitosamente para archivo: {}", archivoId);
+      ProcesamientoResponseDTO response = new ProcesamientoResponseDTO(archivoId, estadoActual);
+      logger.info("Procesamiento async iniciado para archivo: {}", archivoId);
 
       return ResponseEntity.accepted()
           .body(ApiResponse.success(response, "Procesamiento iniciado exitosamente"));
