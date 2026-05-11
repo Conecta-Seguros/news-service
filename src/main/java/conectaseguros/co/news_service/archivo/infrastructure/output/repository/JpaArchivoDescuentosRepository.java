@@ -35,10 +35,12 @@ public interface JpaArchivoDescuentosRepository
   Long countByPeriodoAndEstadoProcesando(@Param("periodo") String periodo);
 
   @Query(
-      "SELECT new conectaseguros.co.news_service.archivo.infrastructure.output.entity.ArchivoDescuentosEntity("
-          + "a.id, a.nombreArchivo, a.periodo, a.seccionalId, a.estado, a.totalRegistros,"
-          + "a.registrosProcesados, a.diferenciasEncontradas, a.excedentes, a.faltantes,"
-          + "a.noLlegaron, a.tamanoBytes, a.fechaCarga, a.usuarioCarga)"
-          + " FROM ArchivoDescuentosEntity a ORDER BY a.fechaCarga DESC")
+      value =
+          "SELECT new conectaseguros.co.news_service.archivo.infrastructure.output.entity.ArchivoDescuentosEntity("
+              + "a.id, a.nombreArchivo, a.periodo, a.seccionalId, a.estado, a.totalRegistros,"
+              + "a.registrosProcesados, a.diferenciasEncontradas, a.excedentes, a.faltantes,"
+              + "a.noLlegaron, a.tamanoBytes, a.fechaCarga, a.usuarioCarga)"
+              + " FROM ArchivoDescuentosEntity a ORDER BY a.fechaCarga DESC",
+      countQuery = "SELECT COUNT(a) FROM ArchivoDescuentosEntity a")
   Page<ArchivoDescuentosEntity> findAllSinContenido(Pageable pageable);
 }

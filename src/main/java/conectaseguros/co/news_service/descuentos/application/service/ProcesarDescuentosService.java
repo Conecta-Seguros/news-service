@@ -13,8 +13,6 @@ import conectaseguros.co.news_service.descuentos.domain.port.output.ClienteServi
 import conectaseguros.co.news_service.descuentos.domain.port.output.DescuentoRepository;
 import conectaseguros.co.news_service.descuentos.domain.port.output.ErrorProcesamientoRepository;
 import conectaseguros.co.news_service.descuentos.infrastructure.output.product.ProductoInfo;
-import java.io.BufferedReader;
-import java.io.StringReader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -177,10 +175,8 @@ public class ProcesarDescuentosService {
       ValidadorLinea cadenaValidadores = configurarCadenaValidadores();
       logger.info("Cadena de validadores configurada para archivo: {}", archivoId);
 
-      // Convertir contenido a líneas
-      byte[] contenido = almacenadorArchivos.recuperar(archivo.getRutaArchivo());
-      String contenidoTexto = new String(contenido, java.nio.charset.StandardCharsets.UTF_8);
-      List<String> lineas = obtenerLineasArchivo(contenidoTexto);
+      // Leer líneas directamente sin copias intermedias en memoria
+      List<String> lineas = almacenadorArchivos.recuperarComoLineas(archivo.getRutaArchivo());
       logger.info("Archivo {} contiene {} líneas totales", archivoId, lineas.size());
 
       // Validar estructura del archivo
@@ -873,22 +869,6 @@ public class ProcesarDescuentosService {
     logger.debug(
         "Cadena de validadores configurada: ValidadorFormato -> ValidadorCliente -> ValidadorProductos");
     return cadena;
-  }
-
-  /** Convierte el contenido del archivo en lista de líneas */
-  private List<String> obtenerLineasArchivo(String contenido) {
-    List<String> lineas = new ArrayList<>();
-    try (BufferedReader reader = new BufferedReader(new StringReader(contenido))) {
-      String linea;
-      while ((linea = reader.readLine()) != null) {
-        lineas.add(linea);
-      }
-      logger.debug("Archivo convertido a {} líneas", lineas.size());
-    } catch (Exception e) {
-      logger.error("Error al leer líneas del archivo", e);
-      throw new RuntimeException("Error al leer líneas del archivo", e);
-    }
-    return lineas;
   }
 
   /** Guarda lotes de descuentos y errores */
