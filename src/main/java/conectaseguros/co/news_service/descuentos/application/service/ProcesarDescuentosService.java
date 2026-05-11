@@ -77,29 +77,25 @@ public class ProcesarDescuentosService {
   /** Procesa un archivo de descuentos de forma asíncrona */
   @Async
   public CompletableFuture<EstadoProcesamiento> procesarArchivo(Long archivoId) {
-    logger.info("=== INICIANDO PROCESAMIENTO ASÍNCRONO DE ARCHIVO {} ===", archivoId);
-
-    return CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            logger.info("Ejecutando procesamiento en hilo: {}", Thread.currentThread().getName());
-            EstadoProcesamiento resultado = procesarArchivoSincrono(archivoId);
-            logger.info("=== PROCESAMIENTO COMPLETADO PARA ARCHIVO {} ===", archivoId);
-            return resultado;
-          } catch (Exception e) {
-            logger.error("=== ERROR EN PROCESAMIENTO ASÍNCRONO DE ARCHIVO {} ===", archivoId, e);
-
-            // Marcar archivo como ERROR
-            try {
-              marcarArchivoConError(archivoId, e.getMessage());
-            } catch (Exception ex) {
-              logger.error("Error al marcar archivo {} con error", archivoId, ex);
-            }
-
-            return EstadoProcesamiento.conError(
-                "Error inesperado: " + e.getMessage(), java.time.LocalDateTime.now());
-          }
-        });
+    logger.info(
+        "=== INICIANDO PROCESAMIENTO ASÍNCRONO DE ARCHIVO {} en hilo: {} ===",
+        archivoId,
+        Thread.currentThread().getName());
+    try {
+      EstadoProcesamiento resultado = procesarArchivoSincrono(archivoId);
+      logger.info("=== PROCESAMIENTO COMPLETADO PARA ARCHIVO {} ===", archivoId);
+      return CompletableFuture.completedFuture(resultado);
+    } catch (Throwable e) {
+      logger.error("=== ERROR EN PROCESAMIENTO ASÍNCRONO DE ARCHIVO {} ===", archivoId, e);
+      try {
+        marcarArchivoConError(archivoId, e.getMessage());
+      } catch (Exception ex) {
+        logger.error("Error al marcar archivo {} con error", archivoId, ex);
+      }
+      return CompletableFuture.completedFuture(
+          EstadoProcesamiento.conError(
+              "Error inesperado: " + e.getMessage(), java.time.LocalDateTime.now()));
+    }
   }
 
   /** Valida la estructura básica del archivo */
