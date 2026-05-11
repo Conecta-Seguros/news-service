@@ -12,13 +12,27 @@ import conectaseguros.co.news_service.archivo.domain.port.output.ArchivoNovedade
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.TreeMap;
+import javax.xml.parsers.SAXParserFactory;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler.SheetContentsHandler;
+import org.apache.poi.xssf.model.SharedStrings;
+import org.apache.poi.xssf.model.StylesTable;
+import org.apache.poi.xssf.usermodel.XSSFComment;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -184,24 +198,63 @@ public class LeerArchivoService implements LeerArchivoUseCase {
   private List<String[]> leerArchivoExcelXLSX(byte[] contenido) throws IOException {
     List<String[]> filas = new ArrayList<>();
 
-    try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(contenido))) {
-      Sheet sheet = workbook.getSheetAt(0); // Primera hoja
+    try (OPCPackage pkg = OPCPackage.open(new ByteArrayInputStream(contenido))) {
+      XSSFReader xssfReader = new XSSFReader(pkg);
+      SharedStrings sharedStrings = xssfReader.getSharedStringsTable();
+      StylesTable stylesTable = xssfReader.getStylesTable();
 
-      for (Row row : sheet) {
-        if (esFilaVacia(row)) {
-          continue;
-        }
+      SheetContentsHandler handler =
+          new SheetContentsHandler() {
+            private final TreeMap<Integer, String> fila = new TreeMap<>();
 
-        String[] campos = new String[row.getLastCellNum()];
-        for (int i = 0; i < row.getLastCellNum(); i++) {
-          Cell cell = row.getCell(i);
-          campos[i] = obtenerValorCelda(cell);
+            @Override
+            public void startRow(int rowNum) {
+              fila.clear();
+            }
+
+            @Override
+            public void endRow(int rowNum) {
+              if (!fila.isEmpty()) {
+                int maxCol = fila.lastKey() + 1;
+                String[] campos = new String[maxCol];
+                for (int i = 0; i < maxCol; i++) {
+                  campos[i] = fila.getOrDefault(i, "");
+                }
+                filas.add(campos);
+              }
+            }
+
+            @Override
+            public void cell(String cellRef, String valor, XSSFComment comment) {
+              if (cellRef != null) {
+                String colStr = cellRef.replaceAll("[0-9]", "");
+                int col = CellReference.convertColStringToIndex(colStr);
+                fila.put(col, valor != null ? valor : "");
+              }
+            }
+          };
+
+      ContentHandler contentHandler =
+          new XSSFSheetXMLHandler(stylesTable, sharedStrings, handler, false);
+
+      SAXParserFactory factory = SAXParserFactory.newInstance();
+      factory.setNamespaceAware(true);
+      XMLReader xmlReader = factory.newSAXParser().getXMLReader();
+      xmlReader.setContentHandler(contentHandler);
+
+      Iterator<InputStream> sheets = xssfReader.getSheetsData();
+      if (sheets.hasNext()) {
+        try (InputStream sheetStream = sheets.next()) {
+          xmlReader.parse(new InputSource(sheetStream));
         }
-        filas.add(campos);
       }
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IOException("Error al leer archivo XLSX (streaming SAX): " + e.getMessage(), e);
     }
 
-    logger.info("Se leyeron {} filas del archivo Excel XLSX", filas.size());
+    logger.info("Se leyeron {} filas del archivo Excel XLSX (streaming SAX)", filas.size());
     return filas;
   }
 
