@@ -4,10 +4,12 @@ import conectaseguros.co.news_service.archivo.domain.exceptions.ArchivoException
 import conectaseguros.co.news_service.archivo.domain.model.enums.TipoArchivo;
 import conectaseguros.co.news_service.archivo.domain.port.output.AlmacenadorArchivos;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
@@ -68,6 +70,20 @@ public class LocalFileStorageAdapter implements AlmacenadorArchivos {
 
     } catch (IOException e) {
       logger.error("Error al recuperar archivo desde: {}", rutaArchivo, e);
+      throw new ArchivoException("Error al recuperar archivo del sistema de archivos", e);
+    }
+  }
+
+  @Override
+  public List<String> recuperarComoLineas(String rutaArchivo) {
+    try {
+      Path path = Paths.get(rutaArchivo);
+      if (!Files.exists(path)) {
+        throw new ArchivoException("El archivo no existe en la ruta: " + rutaArchivo);
+      }
+      return Files.readAllLines(path, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      logger.error("Error al recuperar líneas del archivo desde: {}", rutaArchivo, e);
       throw new ArchivoException("Error al recuperar archivo del sistema de archivos", e);
     }
   }
