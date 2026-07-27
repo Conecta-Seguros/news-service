@@ -3,7 +3,8 @@
     "allow": [
       "Bash(./gradlew clean build:*)",
       "Bash(./gradlew spotlessApply:*)",
-      "Bash(./gradlew clean:*)"
+      "Bash(./gradlew clean:*)",
+      "Bash(./gradlew compileJava --no-daemon -x test 2>&1 | tail -20)"
     ],
     "deny": [],
     "ask": []
